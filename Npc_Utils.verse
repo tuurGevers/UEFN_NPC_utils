@@ -85,6 +85,8 @@ GetAnimationByName(Name:string)<transacts>:animation_sequence=
             "slime_attack" =>  npc.Enemy_Anim_MonsterArmature_Bite_Front
             "slime_hit" => npc.Enemy_Anim_MonsterArmature_HitRecieve
             "slime_death" => npc.Enemy_Anim_MonsterArmature_Death
+            "crab_attack" => crab_npc.Crab_Anim_MonsterArmature_Bite_Front
+            "crab_hit" => crab_npc.Crab_Anim_MonsterArmature_HitRecieve
             _=> npc.Enemy_Anim_MonsterArmature_Bite_Front
 
 GetPlayers(): []agent=
