@@ -76,6 +76,14 @@ FetchPlayers := class(creative_device):
 
     return IsInTime
 
+(NPC:fort_character).GetKnockbackCube()<transacts>: ?creative_prop=
+    var TotalProps: []creative_prop = array{}
+    for(Obj: GetCreativeObjectsWithTag(KnockbackCube{})):
+        if(Prop:= creative_prop[Obj]):
+            set TotalProps += array{Prop}
+
+    return NPC.GetClosestPropToChar(TotalProps)
+
 CountDown(MaxTime:float , nav:navigatable)<suspends>: logic=
     Sleep(MaxTime)
     return false

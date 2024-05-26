@@ -6,6 +6,10 @@ using { /Fortnite.com/Animation/PlayAnimation }
 using { /Verse.org/Assets }
 using { /Fortnite.com/Devices }
 using { /UnrealEngine.com/Temporary/SpatialMath }
+using { /Verse.org/Random }
+using { /Verse.org/Simulation/Tags }
+
+KnockbackCube := class(tag){}
 
 # A Verse-authored NPC Behavior that can be used within an NPC Character Definition or an NPC Spawner device's NPC Behavior Script Override.
 Basic_Behavior<public> := class(npc_behavior):
@@ -27,6 +31,8 @@ Basic_Behavior<public> := class(npc_behavior):
             NPC.DamagedEvent().Subscribe(HandleHit)
 
             NPC.NavigateToRandomLocation(1.0, 500.0)
+            
+            
             loop:
                 set IsHitInLoop = false
                 set IsAttacking = false
@@ -55,6 +61,7 @@ Basic_Behavior<public> := class(npc_behavior):
                                     AttackAnim.Await()
                                     if(IsHitInLoop = false):
                                         if(FC:= FoundPlayer.GetFortCharacter[]):
+                                            Print("player found")
                                             FC.Damage(20.0)
                             else:
                                 Print("Player is not in range")
@@ -81,7 +88,8 @@ Basic_Behavior<public> := class(npc_behavior):
                     Print("Stopped Anim")
                 if(Instigator:=res.Instigator?,PFC:=fort_character[Instigator]):
                     if(Player:=PFC.GetAgent[] ):
-                        set LastPlayer = option{Player}
+                        if(PFC <> NPC):
+                            set LastPlayer = option{Player}
                         
                 Nav.StopNavigation()
                 set IsHitInLoop = true
@@ -91,6 +99,21 @@ Basic_Behavior<public> := class(npc_behavior):
         if(NpcAgent:= GetAgent[], NPC:=NpcAgent.GetFortCharacter[], Anim:= NPC.GetPlayAnimationController[]):
             if(NPC.IsActive[]):
                 Anim.PlayAndAwait(GetAnimationByName(HitAnimation))
+                if(KBCube := NPC.GetKnockbackCube()?):
+                    if(KBCube.TeleportTo[transform{
+                        Translation:=KBCube.GetTransform().Translation, 
+                        Rotation:=KBCube.GetTransform().Rotation,
+                        Scale:=vector3{X:=1.0, Y:=1.0, Z:=5.0}
+                    }]){}
+                Sleep(1.0)
+                if(KBCube := NPC.GetKnockbackCube()?):
+                    if(KBCube.TeleportTo[transform{
+                        Translation:=KBCube.GetTransform().Translation, 
+                        Rotation:=KBCube.GetTransform().Rotation,
+                        Scale:=vector3{X:=1.0, Y:=1.0, Z:=1.0}
+                    }]){}    
+
+
         Print("NPC Hit")
 
     # This function runs when the NPC is despawned or eliminated from the world.

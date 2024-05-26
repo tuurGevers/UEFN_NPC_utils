@@ -107,6 +107,51 @@ SetText<localizes>(Message:string): message = "{Message}"
                     set ClosestDistance = ManDistance
     return (Closest, ClosestDistance)
 
+(Char:fort_character).GetClosestPropToChar(Props:[]creative_prop, ?MaxRange:float=100.0)<transacts>:?creative_prop=
+    var ClosestDistance : float = 9999999999999.0
+    var Closest:?creative_prop = false
+    for(Prop:Props):
+        if(ManDistance:= ManhattenDistance(Prop.GetTransform().Translation, Char.GetTransform().Translation), ManDistance< ClosestDistance):
+            set Closest = option{Prop}
+            set ClosestDistance = ManDistance
+    if(ClosestDistance<=MaxRange):
+        return Closest
+    return false
+
+(CompareProp:creative_prop).GetClosestPropInRange(Props:[]creative_prop, ?MaxRange:float=100.0)<transacts>:?creative_prop=
+    var ClosestDistance : float = 9999999999999.0
+    var Closest:?creative_prop = false
+    for(Prop:Props):
+        if(ManDistance:= ManhattenDistance(Prop.GetTransform().Translation, CompareProp.GetTransform().Translation), ManDistance< ClosestDistance):
+            set Closest = option{Prop}
+            set ClosestDistance = ManDistance
+    if(ClosestDistance<=MaxRange):
+        return Closest
+    return false
+    
+(CompareProp:creative_prop).GetClosestPlayerInRange(Players:[]agent, ?MaxRange:float=100.0)<transacts>:?agent=
+    var ClosestDistance : float = 9999999999999.0
+    var Closest:?agent = false
+    for(Player:Players):
+        if(FC:=Player.GetFortCharacter[]):
+            if(ManDistance:= ManhattenDistance(FC.GetTransform().Translation, CompareProp.GetTransform().Translation), ManDistance< ClosestDistance):
+                set Closest = option{Player}
+                set ClosestDistance = ManDistance
+    if(ClosestDistance<=MaxRange):
+        return Closest
+    return false
+
+(CompareProp:creative_prop).GetClosestFCInRange(Players:[]fort_character, ?MaxRange:float=100.0)<transacts>:?fort_character=
+    var ClosestDistance : float = 9999999999999.0
+    var Closest:?fort_character = false
+    for(FC:Players):
+        if(ManDistance:= ManhattenDistance(FC.GetTransform().Translation, CompareProp.GetTransform().Translation), ManDistance< ClosestDistance):
+            set Closest = option{FC}
+            set ClosestDistance = ManDistance
+    if(ClosestDistance<=MaxRange):
+        return Closest
+    return false
+
 # Returns the closest FortCharacter to a given position along with the distance
 (Players:[]fort_character).GetClosestFCTo(V:vector3, Player:fort_character)<transacts>:?tuple(fort_character, float)=
     var ClosestDistance : float = 9999999999999.0
