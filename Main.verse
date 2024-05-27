@@ -9,6 +9,7 @@ using { /Fortnite.com/UI }
 using { /UnrealEngine.com/Temporary/UI }
 using { /Verse.org/Assets }
 
+#makeshift way to keep track of all alive npc's outside of creative_device
 var TempPlayerPersistance: weak_map(player, NpcPositions) = map{}
 
 NpcPositions := class<final><persistable>:
@@ -23,19 +24,20 @@ Main := class (creative_device):
     var AliveNpcs : []fort_character = array{}
 
     OnBegin<override>()<suspends>:void=
-       
+        # Subscribe to the events of the spawners
         for(Spawner: NpcSpawners):
             Spawner.SpawnedEvent.Subscribe(AddNPC)
             Spawner.EliminatedEvent.Subscribe(RemoveNPC)
 
         for(Player:GetPlayspace().GetPlayers()):
+            Granter.GrantItem(Player)
+        #initialize the player persistance
+        for(Player:GetPlayspace().GetPlayers()):
             if(set TempPlayerPersistance[Player] = NpcPositions{Positions:=array{}}){}
 
         spawn. NpcUpdateLoop()
-        for(Player:GetPlayspace().GetPlayers()):
-            Granter.GrantItem(Player)
-        for(I:=0..4):
-            spawn. SpawnRaycastProp(ScaleProp,GetRandomVector3(vector3{X:=10.0,Y:=10.0, Z:=120.0}, vector3{X:=800.0,Y:=800.0, Z:=150.0}), CheckRaycastProp)
+        # for(I:=0..4):
+        #     SpawnRaycastProp(ScaleProp,GetRandomVector3(vector3{X:=10.0,Y:=10.0, Z:=120.0}, vector3{X:=800.0,Y:=800.0, Z:=150.0}), CheckRaycastProp)
 
     AddNPC(NPC:agent):void=
         if(NPCFC:= NPC.GetFortCharacter[]):

@@ -9,7 +9,6 @@ using { /UnrealEngine.com/Temporary/SpatialMath }
 using { /Verse.org/Random }
 using { /Verse.org/Simulation/Tags }
 
-KnockbackCube := class(tag){}
 
 BasicBehaviors:= enum{BASIC_MELEE, MELEE_CHASE ,BASIC_RANGED}
 
@@ -41,6 +40,18 @@ Basic_Behavior<public> := class(npc_behavior):
                 _=>
             
 
+    SetTargettedPlayer(Dist:float):?agent=
+        if(NpcAgent:= GetAgent[], NPC:=NpcAgent.GetFortCharacter[], Anim:= NPC.GetPlayAnimationController[]):
+            Players:= GetPlayers()
+            var PlayerInRange:?agent=false
+            if(LastAgent:=LastPlayer?):
+                set PlayerInRange = option{LastAgent}    
+            else:
+                if(RandomPlayerInRange := NPC.IsPlayerInRange(Players, Dist)?):
+                    set PlayerInRange = option{RandomPlayerInRange}    
+            return PlayerInRange
+        return false
+
     BasicMeleeLoop()<suspends>:void=
         if(NpcAgent:= GetAgent[], NPC:=NpcAgent.GetFortCharacter[], Anim:= NPC.GetPlayAnimationController[]):
             NPC.NavigateToRandomLocation(1.0, 500.0)
@@ -53,14 +64,9 @@ Basic_Behavior<public> := class(npc_behavior):
                     break
 
                 if(IsHitInLoop = false):
-                    Players:= GetPlayers()
-                    var PlayerInRange:?agent=false
-                    if(LastAgent:=LastPlayer?):
-                        set PlayerInRange = option{LastAgent}    
-                    else:
-                        if(RandomPlayerInRange := NPC.IsPlayerInRange(Players, 1000.0)?):
-                            set PlayerInRange = option{RandomPlayerInRange}    
-
+                    PlayerInRange:= SetTargettedPlayer(1000.0)
+                    
+                    
                     if(FoundPlayer:= PlayerInRange?):
                         if(IsHitInLoop = false):
                             Res:= NPC.NavigateToPlayer(FoundPlayer, 2.0)
@@ -115,6 +121,14 @@ Basic_Behavior<public> := class(npc_behavior):
                             else:
                                 Print("Player is not in range")
 
+    RangedLoop()<suspends>:void=
+        if(NpcAgent:= GetAgent[], NPC:=NpcAgent.GetFortCharacter[], Anim:= NPC.GetPlayAnimationController[]):
+            Trans:=NPC.GetTransform().Translation
+            SpawnRaycastPropWithTransform(RaycastPropAsset, transform{
+                            Translation:=vector3{X:=Trans.X, Y:=Trans.Y, Z:=Trans.Z+150.0}, 
+                            Rotation:=NPC.GetTransform().Rotation,
+                            Scale:=vector3{X:=1.0, Y:=1.0, Z:=1.0}
+                        }, ProjectileAttack)
 
     HandleDeath(res:elimination_result):void=
         Prop:=SpawnTarget(vector3{X:=LastTransform.Translation.X, Y:=LastTransform.Translation.Y, Z:=LastTransform.Translation.Z-90.0}, DeathProp, ?Rotation:=LastTransform.Rotation.ApplyYaw(DegreesToRadians(-90.0)))
@@ -146,20 +160,6 @@ Basic_Behavior<public> := class(npc_behavior):
         if(NpcAgent:= GetAgent[], NPC:=NpcAgent.GetFortCharacter[], Anim:= NPC.GetPlayAnimationController[]):
             if(NPC.IsActive[]):
                 Anim.PlayAndAwait(GetAnimationByName(HitAnimation))
-                if(KBCube := NPC.GetKnockbackCube()?):
-                    if(KBCube.TeleportTo[transform{
-                        Translation:=KBCube.GetTransform().Translation, 
-                        Rotation:=KBCube.GetTransform().Rotation,
-                        Scale:=vector3{X:=1.0, Y:=1.0, Z:=5.0}
-                    }]){}
-                Sleep(1.0)
-                if(KBCube := NPC.GetKnockbackCube()?):
-                    if(KBCube.TeleportTo[transform{
-                        Translation:=KBCube.GetTransform().Translation, 
-                        Rotation:=KBCube.GetTransform().Rotation,
-                        Scale:=vector3{X:=1.0, Y:=1.0, Z:=1.0}
-                    }]){}    
-
 
         Print("NPC Hit")
 

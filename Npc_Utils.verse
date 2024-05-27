@@ -8,81 +8,18 @@ using { /Verse.org/Simulation/Tags }
 using { /Fortnite.com/UI }
 using { /UnrealEngine.com/Temporary/UI }
 using { /Verse.org/Assets }
+using { /Fortnite.com/Devices/CreativeAnimation }
 
 RaycastingProp := class(tag){}
 RaycastingScaleProp := class(tag){}
 NPCTag := class(tag){}
 
-RaycastProp := class:
-    Parent:creative_prop
-    OutputProp:creative_prop
-    ScaleProp:creative_prop
-
-SpawnRaycastProp(Asset:creative_prop_asset,Position:vector3, CB(Prop:RaycastProp)<suspends>:void)<suspends>:void=
-        SpawnedProp := SpawnTarget(Position, Asset)
-
-        var PossibleProps : []creative_prop = array{}
-        for(Obj: GetCreativeObjectsWithTag(RaycastingProp{})):
-            if(Prop:= creative_prop[Obj]):
-                set PossibleProps += array{Prop}
-
-        var PossibleScaleProps : []creative_prop = array{}
-        for(Obj: GetCreativeObjectsWithTag(RaycastingScaleProp{})):
-            if(Prop:= creative_prop[Obj]):
-                set PossibleScaleProps += array{Prop}
-
-        SelectedProp:= SpawnedProp.GetClosestPropInRange(PossibleProps)
-        SelectedScaleProp:= SpawnedProp.GetClosestPropInRange(PossibleScaleProps)
-
-        if(Prop := SelectedProp?, ScaleProp := SelectedScaleProp?):
-            spawn. CB(RaycastProp{Parent:=SpawnedProp, OutputProp:=Prop, ScaleProp:=ScaleProp})
-
-SpawnRaycastPropWithTransform(Asset:creative_prop_asset,Position:transform,  CB(Prop:RaycastProp)<suspends>:void)<suspends>:void=
-        SpawnedProp := SpawnTarget(Position.Translation, Asset, ?Rotation:=Position.Rotation)
-
-        var PossibleProps : []creative_prop = array{}
-        for(Obj: GetCreativeObjectsWithTag(RaycastingProp{})):
-            if(Prop:= creative_prop[Obj]):
-                set PossibleProps += array{Prop}
-
-        var PossibleScaleProps : []creative_prop = array{}
-        for(Obj: GetCreativeObjectsWithTag(RaycastingScaleProp{})):
-            if(Prop:= creative_prop[Obj]):
-                set PossibleScaleProps += array{Prop}
-
-        SelectedProp:= SpawnedProp.GetClosestPropInRange(PossibleProps)
-        SelectedScaleProp:= SpawnedProp.GetClosestPropInRange(PossibleScaleProps)
-
-        if(Prop := SelectedProp?, ScaleProp := SelectedScaleProp?):
-            spawn. CB(RaycastProp{Parent:=SpawnedProp, OutputProp:=Prop, ScaleProp:=ScaleProp})
-
-
-
-ProjectileAttack(raycastProp:RaycastProp, Player:player)<suspends>:void=
-    raycastProp.Parent.MoveTo(raycastProp.Parent.GetTransform().Translation, raycastProp.Parent.GetTransform().Rotation.ApplyPitch(DegreesToRadians(25.0)), 0.1)
-    var V:vector3=CalculatePointNonPlayer(raycastProp.Parent.GetTransform(), 125.0, "Forward")
-    spawn. raycastProp.Parent.MoveTo(V, raycastProp.Parent.GetTransform().Rotation, 0.41)
-    loop:
-        Sleep(0.1)
-        var Trans: transform= raycastProp.Parent.GetTransform()
-        set Trans.Rotation = Trans.Rotation.ApplyPitch(DegreesToRadians(-5.0))
-        set V=CalculatePointNonPlayer(Trans, 125.0, "Forward")
-        if(raycastProp.OutputProp.GetTransform().Scale.X >= 2.0):
-            if(NpcPos :=TempPlayerPersistance[Player].Positions):
-                ClosestNPC := raycastProp.Parent.GetClosestVectorInRange(NpcPos, ?MaxRange:=raycastProp.ScaleProp.GetTransform().Scale.Z*2)
-                MaybeFC:= raycastProp.Parent.GetClosestFCInRange(GetFortCharacters(), ?MaxRange:=raycastProp.ScaleProp.GetTransform().Scale.Z*2)
-                if((not ClosestNPC(0)?) or MaybeFC(0)?):
-                    Print("Raycast hit Prop location {raycastProp.OutputProp.GetTransform().Translation}")
-                    if(FC:= MaybeFC(0)?):
-                        FC.Damage(30.0)
-                        raycastProp.Parent.Dispose()
-                        break
-
+#wrapper class to fetch players outside of creative_devices
 FetchPlayers := class(creative_device):
     FGetPlayers()<transacts>: []agent=
         return GetPlayspace().GetPlayers()
 
-
+#IsPlayerInRange is a function that checks if a player is within a certain range of the NPC.
 (NPC:fort_character).IsPlayerInRange(Players:[]agent, MaxRange:float)<transacts>: ?agent=
     if(NPC.IsActive[]):
         NpcLocation := NPC.GetTransform().Translation
@@ -93,7 +30,7 @@ FetchPlayers := class(creative_device):
                     return option{Player}
     return false
     
-
+# NavigateToPlayer is a function that makes the NPC navigate to the player within a max amount of time.
 (NPC:fort_character).NavigateToPlayer(Player:agent, MaxTime:float)<suspends>: logic=
     var IsInTime : logic = true
     if(FC:=Player.GetFortCharacter[]):
@@ -111,6 +48,7 @@ FetchPlayers := class(creative_device):
 
     return IsInTime
 
+# NavigateToLocation is a function that makes the NPC navigate to a location within a max amount of time.
 (NPC:fort_character).NavigateToLocation(Location:vector3, MaxTime:float)<suspends>: logic=
     var IsInTime : logic = true
     if(Navigatable := NPC.GetNavigatable[]):
@@ -127,6 +65,7 @@ FetchPlayers := class(creative_device):
 
     return IsInTime
 
+# NavigateToRandomLocation is a function that makes the NPC navigate to a random location within a max amount of time.
 (NPC:fort_character).NavigateToRandomLocation(MaxTime:float, MaxOffset:float)<suspends>: logic=
     var IsInTime : logic = true
     if(Navigatable := NPC.GetNavigatable[]):
@@ -145,14 +84,7 @@ FetchPlayers := class(creative_device):
 
     return IsInTime
 
-(NPC:fort_character).GetKnockbackCube()<transacts>: ?creative_prop=
-    var TotalProps: []creative_prop = array{}
-    for(Obj: GetCreativeObjectsWithTag(KnockbackCube{})):
-        if(Prop:= creative_prop[Obj]):
-            set TotalProps += array{Prop}
-
-    return NPC.GetClosestPropToChar(TotalProps)
-
+# CountDown is a function that suspends the execution for a given amount of time used with the maxtime in other functions.
 CountDown(MaxTime:float , nav:navigatable)<suspends>: logic=
     Sleep(MaxTime)
     return false
@@ -166,9 +98,11 @@ GetAnimationByName(Name:string)<transacts>:animation_sequence=
             "crab_hit" => crab_npc.Crab_Anim_MonsterArmature_HitRecieve
             _=> npc.Enemy_Anim_MonsterArmature_Bite_Front
 
+#gets all players in game
 GetPlayers()<transacts>: []agent=
     return FetchPlayers{}.FGetPlayers()
 
+#gets all fort characters in game
 GetFortCharacters()<transacts>:[]fort_character=
         Players:= GetPlayers()
         var FCs : []fort_character = array{}
@@ -176,3 +110,108 @@ GetFortCharacters()<transacts>:[]fort_character=
             if(FC:= Player.GetFortCharacter[]):
                 set FCs += array{FC}
         return FCs
+
+###RAYCASTING###
+
+# A class with the props used in the raycast bp.
+#Attributes:
+#         Parent (creative_prop): The main prop that interacts with other objects.
+#         OutputProp (creative_prop): The target prop affected by interactions.
+#         ScaleProp (creative_prop): Prop that defines scaling parameters for interactions.
+RaycastProp := class:
+    Parent:creative_prop
+    OutputProp:creative_prop
+    ScaleProp:creative_prop
+
+
+# GetClosestObjectByTag is a function that returns the closest creative_prop object with the specified tag to the parent object.
+# Parameters:
+# - Parent: The parent object from which to search for the closest creative_prop object.
+# - Tag: The tag to filter the creative_prop objects.
+# Returns:
+# - The closest creative_prop object with the specified tag, or null if no matching object is found.
+GetClosestObjectByTag(Parent:creative_prop, Tag:tag)<transacts>:?creative_prop=
+    var TotalProps: []creative_prop = array{}
+    for(Obj: GetCreativeObjectsWithTag(Tag)):
+        if(Prop:= creative_prop[Obj]):
+            set TotalProps += array{Prop}
+
+    return Parent.GetClosestPropInRange(TotalProps)
+
+# SpawnRaycastProp is a function that spawns a raycast prop at the specified position with the given asset.
+# It also takes a callback function that will be called when the prop is spawned.
+# The callback function takes a RaycastProp as input and returns void.
+SpawnRaycastProp(Asset:creative_prop_asset, Position:vector3, CB(Prop:RaycastProp)<suspends>:void):void=
+    SpawnedProp := SpawnTarget(Position, Asset)
+
+    SelectedProp:= GetClosestObjectByTag(SpawnedProp, RaycastingProp{})
+    SelectedScaleProp:= GetClosestObjectByTag(SpawnedProp, RaycastingScaleProp{})
+
+    if(Prop := SelectedProp?, ScaleProp := SelectedScaleProp?):
+        spawn. CB(RaycastProp{Parent:=SpawnedProp, OutputProp:=Prop, ScaleProp:=ScaleProp})
+
+# SpawnRaycastPropWithTransform is a function that spawns a raycast prop with a given asset and transform.
+# It takes in the following parameters:
+# - Asset: The asset of the prop to be spawned.
+# - Position: The transform position where the prop will be spawned.
+# - CB(Prop:RaycastProp)<suspends>: The callback function that will be called after the prop is spawned.
+# The callback function takes in the spawned prop as a parameter and returns void.
+# The function itself returns void.
+SpawnRaycastPropWithTransform(Asset:creative_prop_asset,Position:transform,  CB(Prop:RaycastProp)<suspends>:void):void=
+        SpawnedProp := SpawnTarget(Position.Translation, Asset, ?Rotation:=Position.Rotation)
+
+        SelectedProp:= GetClosestObjectByTag(SpawnedProp, RaycastingProp{})
+        SelectedScaleProp:= GetClosestObjectByTag(SpawnedProp, RaycastingScaleProp{})
+
+        if(Prop := SelectedProp?, ScaleProp := SelectedScaleProp?):
+            spawn. CB(RaycastProp{Parent:=SpawnedProp, OutputProp:=Prop, ScaleProp:=ScaleProp})
+
+# It returns the RaycastProp object.
+SpawnRaycastProp(Asset:creative_prop_asset, Position:vector3):?RaycastProp=
+    SpawnedProp := SpawnTarget(Position, Asset)
+
+    SelectedProp:= GetClosestObjectByTag(SpawnedProp, RaycastingProp{})
+    SelectedScaleProp:= GetClosestObjectByTag(SpawnedProp, RaycastingScaleProp{})
+
+    if(Prop := SelectedProp?, ScaleProp := SelectedScaleProp?):
+        return option{RaycastProp{Parent:=SpawnedProp, OutputProp:=Prop, ScaleProp:=ScaleProp}}
+    else:
+        return false
+
+# SpawnRaycastPropWithTransform is a function that spawns a raycast prop with a given asset and transform.
+# It returns the RaycastProp object.
+SpawnRaycastPropWithTransform(Asset:creative_prop_asset,Position:transform):?RaycastProp=
+    SpawnedProp := SpawnTarget(Position.Translation, Asset, ?Rotation:=Position.Rotation)
+
+    SelectedProp:= GetClosestObjectByTag(SpawnedProp, RaycastingProp{})
+    SelectedScaleProp:= GetClosestObjectByTag(SpawnedProp, RaycastingScaleProp{})
+
+    if(Prop := SelectedProp?, ScaleProp := SelectedScaleProp?):
+        return option{RaycastProp{Parent:=SpawnedProp, OutputProp:=Prop, ScaleProp:=ScaleProp}}
+    else:
+        return false
+
+
+# ProjectileAttack is a function that spawns a raycast prop and shoots it away with a makeshift gravity effect.
+# It takes in a RaycastProp as input and returns void.
+ProjectileAttack(raycastProp:RaycastProp)<suspends>:void=
+    raycastProp.Parent.MoveTo(raycastProp.Parent.GetTransform().Translation, raycastProp.Parent.GetTransform().Rotation.ApplyPitch(DegreesToRadians(25.0)), 0.1)
+    var V:vector3=CalculatePointNonPlayer(raycastProp.Parent.GetTransform(), 125.0, "Forward")
+    spawn. raycastProp.Parent.MoveTo(V, raycastProp.Parent.GetTransform().Rotation, 0.41)
+    loop:
+        Sleep(0.1)
+        var Trans: transform= raycastProp.Parent.GetTransform()
+        set Trans.Rotation = Trans.Rotation.ApplyPitch(DegreesToRadians(-5.0))
+        set V=CalculatePointNonPlayer(Trans, 125.0, "Forward")
+        spawn. raycastProp.Parent.MoveTo(V, Trans.Rotation, 0.11)
+
+        if(raycastProp.OutputProp.GetTransform().Scale.X >= 2.0):
+            if(Player:=GetPlayers()[0], NpcPos :=TempPlayerPersistance[Player].Positions):
+                ClosestNPC := raycastProp.Parent.GetClosestVectorInRange(NpcPos, ?MaxRange:=raycastProp.ScaleProp.GetTransform().Scale.Z*2.5)
+                MaybeFC:= raycastProp.Parent.GetClosestFCInRange(GetFortCharacters(), ?MaxRange:=raycastProp.ScaleProp.GetTransform().Scale.Z*2)
+                if((not ClosestNPC(0)?) or MaybeFC(0)?):
+                    if(FC:= MaybeFC(0)?):
+                        FC.Damage(30.0)
+                    raycastProp.Parent.GraceFullDispose()
+                    break
+

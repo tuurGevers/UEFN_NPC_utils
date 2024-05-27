@@ -7,6 +7,7 @@ using { /Fortnite.com/Devices }
 using { /Verse.org/Simulation/Tags }
 using { /Fortnite.com/UI }
 using { /UnrealEngine.com/Temporary/UI }
+using { /Fortnite.com/Devices/CreativeAnimation }
 
 # Utility Functions #
 SimpleRNG:=class:
@@ -164,6 +165,10 @@ SetText<localizes>(Message:string): message = "{Message}"
         return (Closest, ClosestDistance)
     return (false, ClosestDistance)
     
+(Prop:creative_prop).GraceFullDispose():void=
+    if(PropAnimController:= Prop.GetAnimationController[]):
+        PropAnimController.Stop()
+        Prop.Dispose()
 
 # Returns the closest FortCharacter to a given position along with the distance
 (Players:[]fort_character).GetClosestFCTo(V:vector3, Player:fort_character)<transacts>:?tuple(fort_character, float)=
