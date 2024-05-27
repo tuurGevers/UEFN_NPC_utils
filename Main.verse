@@ -9,10 +9,10 @@ using { /Fortnite.com/UI }
 using { /UnrealEngine.com/Temporary/UI }
 using { /Verse.org/Assets }
 
-RaycastingProp := class(tag){}
-RaycastProp := class:
-    Parent:creative_prop
-    OutputProp:creative_prop
+var TempPlayerPersistance: weak_map(player, NpcPositions) = map{}
+
+NpcPositions := class<final><persistable>:
+    Positions:[]vector3
 
 Main := class (creative_device):
     @editable Granter:item_granter_device= item_granter_device{}
@@ -23,14 +23,19 @@ Main := class (creative_device):
     var AliveNpcs : []fort_character = array{}
 
     OnBegin<override>()<suspends>:void=
+       
         for(Spawner: NpcSpawners):
             Spawner.SpawnedEvent.Subscribe(AddNPC)
             Spawner.EliminatedEvent.Subscribe(RemoveNPC)
 
         for(Player:GetPlayspace().GetPlayers()):
+            if(set TempPlayerPersistance[Player] = NpcPositions{Positions:=array{}}){}
+
+        spawn. NpcUpdateLoop()
+        for(Player:GetPlayspace().GetPlayers()):
             Granter.GrantItem(Player)
-            for(I:=0..4):
-                spawn. SpawnRaycastProp()
+        for(I:=0..4):
+            spawn. SpawnRaycastProp(ScaleProp,GetRandomVector3(vector3{X:=10.0,Y:=10.0, Z:=120.0}, vector3{X:=800.0,Y:=800.0, Z:=150.0}), CheckRaycastProp)
 
     AddNPC(NPC:agent):void=
         if(NPCFC:= NPC.GetFortCharacter[]):
@@ -48,36 +53,33 @@ Main := class (creative_device):
             if(FC.IsActive[]):
                 set ActiveFCs += array{FC}
         return ActiveFCs
-     
-    SpawnRaycastProp()<suspends>:void=
-        SpawnedProp := SpawnTarget(GetRandomVector3(vector3{X:=10.0,Y:=10.0, Z:=100.0}, vector3{X:=800.0,Y:=800.0, Z:=150.0}), ScaleProp)
+    
+    GetActiveNpcPositions()<transacts>:[]vector3=
+        var Positions : []vector3 = array{}
+        for(FC: AliveNpcs):
+            set Positions += array{FC.GetTransform().Translation}
 
-        var PossibleProps : []creative_prop = array{}
-        for(Obj: GetCreativeObjectsWithTag(RaycastingProp{})):
-            if(Prop:= creative_prop[Obj]):
-                set PossibleProps += array{Prop}
-        SelectedProp:= SpawnedProp.GetClosestPropInRange(PossibleProps)
-        
-        if(Prop := SelectedProp?):
-            spawn. CheckRaycastProp(RaycastProp{Parent:=SpawnedProp, OutputProp:=Prop})
+        for(Player:GetPlayspace().GetPlayers()):
+            if(set TempPlayerPersistance[Player] = NpcPositions{Positions:=Positions}){}
+        return Positions
+
+    NpcUpdateLoop()<suspends>:void=
+        loop:
+            Sleep(0.1)
+            GetActiveNpcPositions()
 
 
-    CheckRaycastProp(RaycastPropInst:RaycastProp)<suspends>:void=
+    CheckRaycastProp(raycastProp:RaycastProp)<suspends>:void=
             loop:
-                Sleep(0.2)
-                if(RaycastPropInst.OutputProp.GetTransform().Scale.X >= 2.0):
-                    MaybeFC:= RaycastPropInst.Parent.GetClosestFCInRange(GetFortCharacters() + FilterActive())
-                    Print("Prop location {RaycastPropInst.OutputProp.GetTransform().Translation}")
-                    if(FC:= MaybeFC?):
-                        FC.Damage(10.0)
-                        Print("Player Hit!")
-                        RaycastPropInst.Parent.Dispose()
-                        break
-
-    GetFortCharacters()<transacts>:[]fort_character=
-        Players:= GetPlayspace().GetPlayers()
-        var FCs : []fort_character = array{}
-        for(Player:Players):
-            if(FC:= Player.GetFortCharacter[]):
-                set FCs += array{FC}
-        return FCs
+                Sleep(0.1)
+                # spawn. RaycastPropInst.Parent.MoveTo(RaycastPropInst.Parent.GetTransform().Translation + vector3{X:=500.0,Y:=0.0,Z:=0.0},RaycastPropInst.Parent.GetTransform().Rotation, 5.0)
+                if(raycastProp.OutputProp.GetTransform().Scale.X >= 2.0):
+                    if(Player:=GetPlayers()[0], NpcPos :=TempPlayerPersistance[Player].Positions):
+                        Closest := raycastProp.Parent.GetClosestVectorInRange(NpcPos, ?MaxRange:=raycastProp.ScaleProp.GetTransform().Scale.Z*2)
+                        MaybeFC:= raycastProp.Parent.GetClosestFCInRange(GetFortCharacters(), ?MaxRange:=raycastProp.ScaleProp.GetTransform().Scale.Z*2)
+                        if((not Closest(0)?) or MaybeFC(0)?):
+                            Print("Raycast hit Prop location {raycastProp.OutputProp.GetTransform().Translation}")
+                            if(FC:= MaybeFC(0)?):
+                                FC.Damage(30.0)
+                                raycastProp.Parent.Dispose()
+                                break
