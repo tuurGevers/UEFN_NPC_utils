@@ -37,7 +37,7 @@ Basic_Behavior<public> := class(npc_behavior):
             case(BaseBehavior):
                 BasicBehaviors.BASIC_MELEE=>BasicMeleeLoop()
                 BasicBehaviors.MELEE_CHASE=>MeleeChaseLoop()
-                _=>
+                BasicBehaviors.BASIC_RANGED=>RangedLoop()
             
 
     SetTargettedPlayer(Dist:float):?agent=
@@ -122,14 +122,45 @@ Basic_Behavior<public> := class(npc_behavior):
                                 Print("Player is not in range")
 
     RangedLoop()<suspends>:void=
-        if(NpcAgent:= GetAgent[], NPC:=NpcAgent.GetFortCharacter[], Anim:= NPC.GetPlayAnimationController[]):
-            Trans:=NPC.GetTransform().Translation
-            SpawnRaycastPropWithTransform(RaycastPropAsset, transform{
-                            Translation:=vector3{X:=Trans.X, Y:=Trans.Y, Z:=Trans.Z+150.0}, 
-                            Rotation:=NPC.GetTransform().Rotation,
-                            Scale:=vector3{X:=1.0, Y:=1.0, Z:=1.0}
-                        }, ProjectileAttack)
+        if(NpcAgent:= GetAgent[], NPC:=NpcAgent.GetFortCharacter[], Anim:= NPC.GetPlayAnimationController[], Focus:=NPC.GetFocusInterface[]):
+            loop:
+                Print("loop")
+                set IsHitInLoop = false
+                set IsAttacking = false
 
+                Sleep(1.0)
+                if(IsAlive = false):
+                    break
+                
+                if(IsHitInLoop = false):
+                    Print("not hit")
+                    PlayerInRange:= SetTargettedPlayer(5000.0)
+                    Print("player searched")
+                    if(FoundPlayer:= PlayerInRange?):
+                        spawn. Focus.MaintainFocus(FoundPlayer)
+
+                        if(NPC.GetDistance(FoundPlayer) < 500.0):
+                            V:= CalculatePoint(FoundPlayer, 1500.0, "Forward")
+                            NPC.NavigateToLocation(V, 1.0)
+                        else:
+                            NPC.NavigateToPlayer(FoundPlayer, 1.0)
+
+                        if(IsHitInLoop = false):
+                            set IsAttacking = true
+                            Print("starting attack")
+                            for(I:=0..5):
+                                NPC.NavigateToPlayer(FoundPlayer, 0.05)
+                                AttackAnim:=Anim.Play(GetAnimationByName(AttackAnimation))
+                                set CurrentAnim = option{AttackAnim}
+                                AttackAnim.Await()
+                                if(IsHitInLoop = false):
+                                    spawn. NPC.ProjectileNoGravity(RaycastPropAsset, HandleRangedHit)
+
+                                
+
+    HandleRangedHit(FC:fort_character)<suspends>:void=
+        FC.Damage(20.0)
+        
     HandleDeath(res:elimination_result):void=
         Prop:=SpawnTarget(vector3{X:=LastTransform.Translation.X, Y:=LastTransform.Translation.Y, Z:=LastTransform.Translation.Z-90.0}, DeathProp, ?Rotation:=LastTransform.Rotation.ApplyYaw(DegreesToRadians(-90.0)))
         spawn. RemoveProp(Prop)

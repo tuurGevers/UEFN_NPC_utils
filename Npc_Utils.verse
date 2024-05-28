@@ -84,6 +84,11 @@ FetchPlayers := class(creative_device):
 
     return IsInTime
 
+(NPC:fort_character).GetDistance(Player:agent)<transacts>:float=
+    if(FC:=Player.GetFortCharacter[]):
+        return ManhattenDistance(NPC.GetTransform().Translation, FC.GetTransform().Translation)
+    return 0.0
+
 # CountDown is a function that suspends the execution for a given amount of time used with the maxtime in other functions.
 CountDown(MaxTime:float , nav:navigatable)<suspends>: logic=
     Sleep(MaxTime)
@@ -93,9 +98,10 @@ GetAnimationByName(Name:string)<transacts>:animation_sequence=
         return case(Name):
             "slime_attack" =>  npc.Enemy_Anim_MonsterArmature_Bite_Front
             "slime_hit" => npc.Enemy_Anim_MonsterArmature_HitRecieve
-            "slime_death" => npc.Enemy_Anim_MonsterArmature_Death
             "crab_attack" => crab_npc.Crab_Anim_MonsterArmature_Bite_Front
             "crab_hit" => crab_npc.Crab_Anim_MonsterArmature_HitRecieve
+            "soldier_hit" =>soldier.Character_Soldier_Anim_CharacterArmature_HitReact
+            "soldier_attack" =>soldier.Character_Soldier_Anim_CharacterArmature_Idle_Shoot
             _=> npc.Enemy_Anim_MonsterArmature_Bite_Front
 
 #gets all players in game
@@ -214,4 +220,41 @@ ProjectileAttack(raycastProp:RaycastProp)<suspends>:void=
                         FC.Damage(30.0)
                     raycastProp.Parent.GraceFullDispose()
                     break
+
+(NPC:fort_character).ProjectileNoGravity(Asset:creative_prop_asset, OnHit(FC:fort_character)<suspends>:void)<suspends>:void=
+    VStart := CalculatePointNonPlayer(NPC.GetTransform(), 250.0, "Forward")
+    raycastProp:= SpawnRaycastPropWithTransform(Asset, transform{
+        Translation:= VStart,
+        Rotation:= NPC.GetTransform().Rotation,
+        Scale:= vector3{X:=1.0, Y:=1.0, Z:=1.0}
+    })
+    if(Prop:=raycastProp?):
+        Print("Projectile spawned")
+        race:
+            MoveProjectile(Prop)
+            HitDetection(Prop, OnHit)
+           
+MoveProjectile(Prop:RaycastProp)<suspends>:void=
+    loop:
+        V:=CalculatePointNonPlayer(Prop.Parent.GetTransform(), 200.0, "Forward")
+        spawn. Prop.Parent.MoveTo(V, Prop.Parent.GetTransform().Rotation, 0.11)
+        Sleep(0.1)
+
+HitDetection(Prop:RaycastProp,OnHit(FC:fort_character)<suspends>:void)<suspends>:void=
+    var Time:float = 0.0
+    loop:
+        Sleep(0.03)
+        set Time += 0.05
+        if(Prop.OutputProp.GetTransform().Scale.X >= 2.0):
+            if(Player:=GetPlayers()[0], NpcPos :=TempPlayerPersistance[Player].Positions):
+                ClosestNPC := Prop.Parent.GetClosestVectorInRange(NpcPos, ?MaxRange:=Prop.ScaleProp.GetTransform().Scale.Z*2.5)
+                MaybeFC:= Prop.Parent.GetClosestFCInRange(GetFortCharacters(), ?MaxRange:=Prop.ScaleProp.GetTransform().Scale.Z*2)
+                if((not ClosestNPC(0)?) or MaybeFC(0)? or Time>=5.0):
+                    if(FC:= MaybeFC(0)?):
+                        spawn. OnHit(FC)
+                    Print("disposing")
+                    Prop.Parent.GraceFullDispose()
+                    break
+
+ 
 
