@@ -10,7 +10,7 @@ using { /Verse.org/Random }
 using { /Verse.org/Simulation/Tags }
 
 
-BasicBehaviors:= enum{BASIC_MELEE, MELEE_CHASE ,BASIC_RANGED}
+BasicBehaviors:= enum{BASIC_MELEE, MELEE_CHASE ,BASIC_RANGED, INTERACT_DEMO}
 
 
 # A Verse-authored NPC Behavior that can be used within an NPC Character Definition or an NPC Spawner device's NPC Behavior Script Override.
@@ -20,6 +20,8 @@ Basic_Behavior<public> := class(npc_behavior):
     @editable DeathProp: creative_prop_asset = DefaultCreativePropAsset
     @editable BaseBehavior:BasicBehaviors = BasicBehaviors.BASIC_MELEE
     @editable RaycastPropAsset : creative_prop_asset = DefaultCreativePropAsset
+    @editable CatchInput: input_trigger_device =input_trigger_device{}
+    
 
     var IsAlive:logic = true
     var IsHitInLoop:logic = false
@@ -27,6 +29,7 @@ Basic_Behavior<public> := class(npc_behavior):
     var LastTransform:transform= transform{}
     var CurrentAnim: ?play_animation_instance = false
     var LastPlayer:?agent=false
+    var IsCaught:logic = false
 
     # This function runs when the NPC is spawned in the world and ready to follow a behavior.
     OnBegin<override>()<suspends>:void=
@@ -38,6 +41,7 @@ Basic_Behavior<public> := class(npc_behavior):
                 BasicBehaviors.BASIC_MELEE=>BasicMeleeLoop()
                 BasicBehaviors.MELEE_CHASE=>MeleeChaseLoop()
                 BasicBehaviors.BASIC_RANGED=>RangedLoop()
+                BasicBehaviors.INTERACT_DEMO=>InteractDemoLoop()
             
 
     SetTargettedPlayer(Dist:float):?agent=
@@ -156,7 +160,35 @@ Basic_Behavior<public> := class(npc_behavior):
                                 if(IsHitInLoop = false):
                                     spawn. NPC.ProjectileNoGravity(RaycastPropAsset, HandleRangedHit)
 
-                                
+    InteractDemoLoop()<suspends>:void=
+        CatchInput.PressedEvent.Subscribe(HandleCatch)
+        if(NpcAgent:= GetAgent[], NPC:=NpcAgent.GetFortCharacter[], Anim:= NPC.GetPlayAnimationController[]):
+            loop:
+                Sleep(0.1)
+                set IsHitInLoop = false
+                set IsAttacking = false
+
+                if(IsAlive = false):
+                    break
+                Print("racing")
+                Res:= race:
+                    NPC.NavigateToRandomLocation(1.0, 500.0)
+                    IsCaughtLoop()
+                Print("race done")
+                if(Res = -5):
+                    Print("npc caught")
+                    break
+    
+    IsCaughtLoop()<suspends>:int=
+        loop:
+            Sleep(0.3)
+            if(IsCaught = true):
+                return -5
+
+    HandleCatch(Player:agent):void=
+        if(NPC:= GetAgent[].GetFortCharacter[], FC:=Player.GetFortCharacter[]):
+            if(ManhattenDistance(NPC, FC) < 250.0):
+                set IsCaught = true  
 
     HandleRangedHit(FC:fort_character)<suspends>:void=
         FC.Damage(20.0)

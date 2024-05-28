@@ -222,7 +222,7 @@ ProjectileAttack(raycastProp:RaycastProp)<suspends>:void=
                     break
 
 (NPC:fort_character).ProjectileNoGravity(Asset:creative_prop_asset, OnHit(FC:fort_character)<suspends>:void)<suspends>:void=
-    VStart := CalculatePointNonPlayer(NPC.GetTransform(), 250.0, "Forward")
+    VStart := CalculatePointNonPlayer(NPC.GetTransform(), 150.0, "Forward")
     raycastProp:= SpawnRaycastPropWithTransform(Asset, transform{
         Translation:= VStart,
         Rotation:= NPC.GetTransform().Rotation,

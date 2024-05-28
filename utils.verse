@@ -260,6 +260,10 @@ SetText<localizes>(Message:string): message = "{Message}"
 # Calculates the Manhattan distance between two vectors
 ManhattenDistance(V1:vector3, V2:vector3)<transacts>:float=
     return Abs(V1.X-V2.X) + Abs(V1.Y - V2.Y) +  Abs(V1.Z - V2.Z)
+ManhattenDistance(FC1:fort_character, FC2:fort_character)<transacts>:float=
+    FC1Trans:= FC1.GetTransform().Translation
+    FC2Trans:= FC2.GetTransform().Translation
+    return Abs(FC1Trans.X-FC2Trans.X) + Abs(FC1Trans.Y - FC2Trans.Y) +  Abs(FC1Trans.Z - FC2Trans.Z)
 
 # Spawns a target prop at a given position with optional scale and rotation
 SpawnTarget(Position:vector3, Prop: creative_prop_asset, ?Scale:vector3 = vector3{X:=1.0,Y:=1.0,Z:=1.0}, ?Rotation:rotation=IdentityRotation() )<transacts>:creative_prop=
