@@ -10,8 +10,7 @@ using { /UnrealEngine.com/Temporary/UI }
 using { /Verse.org/Assets }
 using { /Fortnite.com/Devices/CreativeAnimation }
 
-RaycastingProp := class(tag){}
-RaycastingScaleProp := class(tag){}
+
 NPCTag := class(tag){}
 
 #wrapper class to fetch players outside of creative_devices
@@ -117,85 +116,7 @@ GetFortCharacters()<transacts>:[]fort_character=
                 set FCs += array{FC}
         return FCs
 
-###RAYCASTING###
 
-# A class with the props used in the raycast bp.
-#Attributes:
-#         Parent (creative_prop): The main prop that interacts with other objects.
-#         OutputProp (creative_prop): The target prop affected by interactions.
-#         ScaleProp (creative_prop): Prop that defines scaling parameters for interactions.
-RaycastProp := class:
-    Parent:creative_prop
-    OutputProp:creative_prop
-    ScaleProp:creative_prop
-
-
-# GetClosestObjectByTag is a function that returns the closest creative_prop object with the specified tag to the parent object.
-# Parameters:
-# - Parent: The parent object from which to search for the closest creative_prop object.
-# - Tag: The tag to filter the creative_prop objects.
-# Returns:
-# - The closest creative_prop object with the specified tag, or null if no matching object is found.
-GetClosestObjectByTag(Parent:creative_prop, Tag:tag)<transacts>:?creative_prop=
-    var TotalProps: []creative_prop = array{}
-    for(Obj: GetCreativeObjectsWithTag(Tag)):
-        if(Prop:= creative_prop[Obj]):
-            set TotalProps += array{Prop}
-
-    return Parent.GetClosestPropInRange(TotalProps)
-
-# SpawnRaycastProp is a function that spawns a raycast prop at the specified position with the given asset.
-# It also takes a callback function that will be called when the prop is spawned.
-# The callback function takes a RaycastProp as input and returns void.
-SpawnRaycastProp(Asset:creative_prop_asset, Position:vector3, CB(Prop:RaycastProp)<suspends>:void):void=
-    SpawnedProp := SpawnTarget(Position, Asset)
-
-    SelectedProp:= GetClosestObjectByTag(SpawnedProp, RaycastingProp{})
-    SelectedScaleProp:= GetClosestObjectByTag(SpawnedProp, RaycastingScaleProp{})
-
-    if(Prop := SelectedProp?, ScaleProp := SelectedScaleProp?):
-        spawn. CB(RaycastProp{Parent:=SpawnedProp, OutputProp:=Prop, ScaleProp:=ScaleProp})
-
-# SpawnRaycastPropWithTransform is a function that spawns a raycast prop with a given asset and transform.
-# It takes in the following parameters:
-# - Asset: The asset of the prop to be spawned.
-# - Position: The transform position where the prop will be spawned.
-# - CB(Prop:RaycastProp)<suspends>: The callback function that will be called after the prop is spawned.
-# The callback function takes in the spawned prop as a parameter and returns void.
-# The function itself returns void.
-SpawnRaycastPropWithTransform(Asset:creative_prop_asset,Position:transform,  CB(Prop:RaycastProp)<suspends>:void):void=
-        SpawnedProp := SpawnTarget(Position.Translation, Asset, ?Rotation:=Position.Rotation)
-
-        SelectedProp:= GetClosestObjectByTag(SpawnedProp, RaycastingProp{})
-        SelectedScaleProp:= GetClosestObjectByTag(SpawnedProp, RaycastingScaleProp{})
-
-        if(Prop := SelectedProp?, ScaleProp := SelectedScaleProp?):
-            spawn. CB(RaycastProp{Parent:=SpawnedProp, OutputProp:=Prop, ScaleProp:=ScaleProp})
-
-# It returns the RaycastProp object.
-SpawnRaycastProp(Asset:creative_prop_asset, Position:vector3):?RaycastProp=
-    SpawnedProp := SpawnTarget(Position, Asset)
-
-    SelectedProp:= GetClosestObjectByTag(SpawnedProp, RaycastingProp{})
-    SelectedScaleProp:= GetClosestObjectByTag(SpawnedProp, RaycastingScaleProp{})
-
-    if(Prop := SelectedProp?, ScaleProp := SelectedScaleProp?):
-        return option{RaycastProp{Parent:=SpawnedProp, OutputProp:=Prop, ScaleProp:=ScaleProp}}
-    else:
-        return false
-
-# SpawnRaycastPropWithTransform is a function that spawns a raycast prop with a given asset and transform.
-# It returns the RaycastProp object.
-SpawnRaycastPropWithTransform(Asset:creative_prop_asset,Position:transform):?RaycastProp=
-    SpawnedProp := SpawnTarget(Position.Translation, Asset, ?Rotation:=Position.Rotation)
-
-    SelectedProp:= GetClosestObjectByTag(SpawnedProp, RaycastingProp{})
-    SelectedScaleProp:= GetClosestObjectByTag(SpawnedProp, RaycastingScaleProp{})
-
-    if(Prop := SelectedProp?, ScaleProp := SelectedScaleProp?):
-        return option{RaycastProp{Parent:=SpawnedProp, OutputProp:=Prop, ScaleProp:=ScaleProp}}
-    else:
-        return false
 
 
 # ProjectileAttack is a function that spawns a raycast prop and shoots it away with a makeshift gravity effect.
@@ -221,7 +142,7 @@ ProjectileAttack(raycastProp:RaycastProp)<suspends>:void=
                     raycastProp.Parent.GraceFullDispose()
                     break
 
-(NPC:fort_character).ProjectileNoGravity(Asset:creative_prop_asset, OnHit(FC:fort_character)<suspends>:void)<suspends>:void=
+(NPC:fort_character).ProjectileNoGravity(Asset:creative_prop_asset, OnHit(FC:fort_character)<suspends>:void, ?Speed:float=200.0)<suspends>:void=
     VStart := CalculatePointNonPlayer(NPC.GetTransform(), 150.0, "Forward")
     raycastProp:= SpawnRaycastPropWithTransform(Asset, transform{
         Translation:= VStart,
@@ -231,12 +152,12 @@ ProjectileAttack(raycastProp:RaycastProp)<suspends>:void=
     if(Prop:=raycastProp?):
         Print("Projectile spawned")
         race:
-            MoveProjectile(Prop)
+            MoveProjectile(Prop, Speed)
             HitDetection(Prop, OnHit)
            
-MoveProjectile(Prop:RaycastProp)<suspends>:void=
+MoveProjectile(Prop:RaycastProp, Speed:float)<suspends>:void=
     loop:
-        V:=CalculatePointNonPlayer(Prop.Parent.GetTransform(), 200.0, "Forward")
+        V:=CalculatePointNonPlayer(Prop.Parent.GetTransform(), Speed, "Forward")
         spawn. Prop.Parent.MoveTo(V, Prop.Parent.GetTransform().Rotation, 0.11)
         Sleep(0.1)
 

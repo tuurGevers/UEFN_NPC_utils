@@ -20,6 +20,7 @@ Basic_Behavior<public> := class(npc_behavior):
     @editable DeathProp: creative_prop_asset = DefaultCreativePropAsset
     @editable BaseBehavior:BasicBehaviors = BasicBehaviors.BASIC_MELEE
     @editable RaycastPropAsset : creative_prop_asset = DefaultCreativePropAsset
+    @editable VisionAsset : creative_prop_asset = DefaultCreativePropAsset
     @editable CatchInput: input_trigger_device =input_trigger_device{}
     
 
@@ -30,6 +31,7 @@ Basic_Behavior<public> := class(npc_behavior):
     var CurrentAnim: ?play_animation_instance = false
     var LastPlayer:?agent=false
     var IsCaught:logic = false
+    var PlayerVisible:logic = false
 
     # This function runs when the NPC is spawned in the world and ready to follow a behavior.
     OnBegin<override>()<suspends>:void=
@@ -127,10 +129,12 @@ Basic_Behavior<public> := class(npc_behavior):
 
     RangedLoop()<suspends>:void=
         if(NpcAgent:= GetAgent[], NPC:=NpcAgent.GetFortCharacter[], Anim:= NPC.GetPlayAnimationController[], Focus:=NPC.GetFocusInterface[]):
+            Print("raycast prop found")
             loop:
                 Print("loop")
                 set IsHitInLoop = false
                 set IsAttacking = false
+                set PlayerVisible = false
 
                 Sleep(1.0)
                 if(IsAlive = false):
@@ -138,7 +142,7 @@ Basic_Behavior<public> := class(npc_behavior):
                 
                 if(IsHitInLoop = false):
                     Print("not hit")
-                    PlayerInRange:= SetTargettedPlayer(5000.0)
+                    PlayerInRange:= SetTargettedPlayer(2500.0)
                     Print("player searched")
                     if(FoundPlayer:= PlayerInRange?):
                         spawn. Focus.MaintainFocus(FoundPlayer)
@@ -149,16 +153,22 @@ Basic_Behavior<public> := class(npc_behavior):
                         else:
                             NPC.NavigateToPlayer(FoundPlayer, 1.0)
 
-                        if(IsHitInLoop = false):
-                            set IsAttacking = true
-                            Print("starting attack")
-                            for(I:=0..5):
-                                NPC.NavigateToPlayer(FoundPlayer, 0.05)
-                                AttackAnim:=Anim.Play(GetAnimationByName(AttackAnimation))
-                                set CurrentAnim = option{AttackAnim}
-                                AttackAnim.Await()
-                                if(IsHitInLoop = false):
-                                    spawn. NPC.ProjectileNoGravity(RaycastPropAsset, HandleRangedHit)
+                        if(IsHitInLoop = false ):
+                            SpawnRaycastProp(VisionAsset ,CalculatePoint(NpcAgent, 250.0, "Forward")+ vector3{X:=0.0, Y:=0.0, Z:=30.0}, CheckRaycastProp, ?IsAsync:=false)
+                            if(PlayerVisible = true):
+                                Print("player visible")
+                                set IsAttacking = true
+                                Print("starting attack")
+                                for(I:=0..5):
+                                    NPC.NavigateToPlayer(FoundPlayer, 0.05)
+                                    AttackAnim:=Anim.Play(GetAnimationByName(AttackAnimation))
+                                    set CurrentAnim = option{AttackAnim}
+                                    AttackAnim.Await()
+                                    if(IsHitInLoop = false):
+                                        spawn. NPC.ProjectileNoGravity(RaycastPropAsset, HandleRangedHit)
+                                        
+
+    
 
     InteractDemoLoop()<suspends>:void=
         CatchInput.PressedEvent.Subscribe(HandleCatch)
@@ -192,6 +202,22 @@ Basic_Behavior<public> := class(npc_behavior):
 
     HandleRangedHit(FC:fort_character)<suspends>:void=
         FC.Damage(20.0)
+    CheckRaycastProp(raycastProp:RaycastProp)<suspends>:void=
+        loop:
+            Sleep(0.1)
+            # spawn. RaycastPropInst.Parent.MoveTo(RaycastPropInst.Parent.GetTransform().Translation + vector3{X:=500.0,Y:=0.0,Z:=0.0},RaycastPropInst.Parent.GetTransform().Rotation, 5.0)
+            if(raycastProp.OutputProp.GetTransform().Scale.X >= 2.0):
+                if(Player:=GetPlayers()[0], NpcPos :=TempPlayerPersistance[Player].Positions):
+                    Print("hit: {raycastProp.HitLocationProp.GetTransform().Translation}")
+                    Closest := raycastProp.Parent.GetClosestVectorInRange(NpcPos, ?MaxRange:=raycastProp.ScaleProp.GetTransform().Scale.Z*2)
+                    MaybeFC:= raycastProp.Parent.GetClosestFCInRange(GetFortCharacters(), ?MaxRange:=raycastProp.ScaleProp.GetTransform().Scale.Z*2)
+                    if((not Closest(0)?) or MaybeFC(0)?):
+                        Print("Raycast hit Prop location {raycastProp.OutputProp.GetTransform().Translation}")
+                        if(FC:= MaybeFC(0)?):
+                            set PlayerVisible = true
+                            raycastProp.Parent.Dispose()
+                            break
+    
         
     HandleDeath(res:elimination_result):void=
         Prop:=SpawnTarget(vector3{X:=LastTransform.Translation.X, Y:=LastTransform.Translation.Y, Z:=LastTransform.Translation.Z-90.0}, DeathProp, ?Rotation:=LastTransform.Rotation.ApplyYaw(DegreesToRadians(-90.0)))

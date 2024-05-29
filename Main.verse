@@ -18,12 +18,14 @@ NpcPositions := class<final><persistable>:
 Main := class (creative_device):
     @editable Granter:item_granter_device= item_granter_device{}
     @editable ScaleProp : creative_prop_asset = DefaultCreativePropAsset
+    @editable AdvancedRaycastAsset: creative_prop_asset = DefaultCreativePropAsset
 
     @editable NpcSpawners: []npc_spawner_device = array{}
 
     var AliveNpcs : []fort_character = array{}
 
     OnBegin<override>()<suspends>:void=
+        Print("starting")
         # Subscribe to the events of the spawners
         for(Spawner: NpcSpawners):
             Spawner.SpawnedEvent.Subscribe(AddNPC)
@@ -36,7 +38,8 @@ Main := class (creative_device):
             if(set TempPlayerPersistance[Player] = NpcPositions{Positions:=array{}}){}
 
         spawn. NpcUpdateLoop()
-        # for(I:=0..4):
+        # SpawnAdvancedRaycastProp(AdvancedRaycastAsset, GetRandomVector3(vector3{X:=10.0,Y:=10.0, Z:=120.0}, vector3{X:=800.0,Y:=800.0, Z:=150.0}), TestAdvancedRaycast)
+        #for(I:=0..4):
         #     SpawnRaycastProp(ScaleProp,GetRandomVector3(vector3{X:=10.0,Y:=10.0, Z:=120.0}, vector3{X:=800.0,Y:=800.0, Z:=150.0}), CheckRaycastProp)
 
     AddNPC(NPC:agent):void=
@@ -72,16 +75,29 @@ Main := class (creative_device):
 
 
     CheckRaycastProp(raycastProp:RaycastProp)<suspends>:void=
-            loop:
-                Sleep(0.1)
-                # spawn. RaycastPropInst.Parent.MoveTo(RaycastPropInst.Parent.GetTransform().Translation + vector3{X:=500.0,Y:=0.0,Z:=0.0},RaycastPropInst.Parent.GetTransform().Rotation, 5.0)
-                if(raycastProp.OutputProp.GetTransform().Scale.X >= 2.0):
-                    if(Player:=GetPlayers()[0], NpcPos :=TempPlayerPersistance[Player].Positions):
-                        Closest := raycastProp.Parent.GetClosestVectorInRange(NpcPos, ?MaxRange:=raycastProp.ScaleProp.GetTransform().Scale.Z*2)
-                        MaybeFC:= raycastProp.Parent.GetClosestFCInRange(GetFortCharacters(), ?MaxRange:=raycastProp.ScaleProp.GetTransform().Scale.Z*2)
-                        if((not Closest(0)?) or MaybeFC(0)?):
-                            Print("Raycast hit Prop location {raycastProp.OutputProp.GetTransform().Translation}")
-                            if(FC:= MaybeFC(0)?):
-                                FC.Damage(30.0)
-                                raycastProp.Parent.Dispose()
-                                break
+        loop:
+            Sleep(0.1)
+            # spawn. RaycastPropInst.Parent.MoveTo(RaycastPropInst.Parent.GetTransform().Translation + vector3{X:=500.0,Y:=0.0,Z:=0.0},RaycastPropInst.Parent.GetTransform().Rotation, 5.0)
+            if(raycastProp.OutputProp.GetTransform().Scale.X >= 2.0):
+                if(Player:=GetPlayers()[0], NpcPos :=TempPlayerPersistance[Player].Positions):
+                    Closest := raycastProp.Parent.GetClosestVectorInRange(NpcPos, ?MaxRange:=raycastProp.ScaleProp.GetTransform().Scale.Z*2)
+                    MaybeFC:= raycastProp.Parent.GetClosestFCInRange(GetFortCharacters(), ?MaxRange:=raycastProp.ScaleProp.GetTransform().Scale.Z*2)
+                    if((not Closest(0)?) or MaybeFC(0)?):
+                        Print("Raycast hit Prop location {raycastProp.OutputProp.GetTransform().Translation}")
+                        if(FC:= MaybeFC(0)?):
+                            FC.Damage(30.0)
+                            raycastProp.Parent.Dispose()
+                            break
+
+    # TestAdvancedRaycast(advancedRaycastProp:AdvancedRaycastProp)<suspends>:void=
+    #     ParentPos:=advancedRaycastProp.Parent.GetTransform().Translation
+
+    #     loop:
+    #         Sleep(0.1)
+    #         if(advancedRaycastProp.OutputProp.GetTransform().Scale.X >= 2.0):
+    #             if(Player:=GetPlayers()[0], NpcPos :=TempPlayerPersistance[Player].Positions):
+    #                 Closest := advancedRaycastProp.Parent.GetClosestVectorInRange(NpcPos, ?MaxRange:=advancedRaycastProp.ScaleProp.GetTransform().Scale.Z*2)
+    #                 MaybeFC:= advancedRaycastProp.Parent.GetClosestFCInRange(GetFortCharacters(), ?MaxRange:=advancedRaycastProp.ScaleProp.GetTransform().Scale.Z*2)
+    #                 if((not Closest(0)?) or MaybeFC(0)?):
+    #                     Print("Raycast hit Prop location {advancedRaycastProp.OutputProp.GetTransform().Translation}")
+                    

@@ -129,6 +129,16 @@ SetText<localizes>(Message:string): message = "{Message}"
     if(ClosestDistance<=MaxRange or MaxRange<0.0):
         return Closest
     return false
+(V:vector3).GetClosestPropInRange(Props:[]creative_prop, ?MaxRange:float=100.0)<transacts>:?creative_prop=
+    var ClosestDistance : float = 9999999999999.0
+    var Closest:?creative_prop = false
+    for(Prop:Props):
+        if(ManDistance:= ManhattenDistance(Prop.GetTransform().Translation,V), ManDistance< ClosestDistance):
+            set Closest = option{Prop}
+            set ClosestDistance = ManDistance
+    if(ClosestDistance<=MaxRange or MaxRange<0.0):
+        return Closest
+    return false
     
 (CompareProp:creative_prop).GetClosestPlayerInRange(Players:[]agent, ?MaxRange:float=100.0)<transacts>:?agent=
     var ClosestDistance : float = 9999999999999.0
