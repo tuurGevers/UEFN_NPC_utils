@@ -29,6 +29,12 @@ RaycastProp := class:
     ScaleProp:creative_prop
     HitLocationProp:creative_prop
 
+(RP: RaycastProp).GracefullDispose():void=
+    RP.OutputProp.Dispose()
+    RP.ScaleProp.Dispose()
+    RP.HitLocationProp.Dispose()
+    RP.Parent.Dispose()
+
 AdvancedRaycastProp := class:
     Parent:creative_prop
     OutputProp:creative_prop

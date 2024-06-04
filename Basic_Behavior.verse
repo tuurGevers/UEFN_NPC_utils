@@ -10,7 +10,7 @@ using { /Verse.org/Random }
 using { /Verse.org/Simulation/Tags }
 
 
-BasicBehaviors:= enum{BASIC_MELEE, MELEE_CHASE ,BASIC_RANGED, INTERACT_DEMO}
+BasicBehaviors:= enum{BASIC_MELEE, MELEE_CHASE ,BASIC_RANGED, INTERACT_DEMO, RANDOM_MOVE}
 
 
 # A Verse-authored NPC Behavior that can be used within an NPC Character Definition or an NPC Spawner device's NPC Behavior Script Override.
@@ -43,6 +43,7 @@ Basic_Behavior<public> := class(npc_behavior):
                 BasicBehaviors.MELEE_CHASE=>MeleeChaseLoop()
                 BasicBehaviors.BASIC_RANGED=>RangedLoop()
                 BasicBehaviors.INTERACT_DEMO=>InteractDemoLoop()
+                BasicBehaviors.RANDOM_MOVE=>RandomMoveLoop()
             
 
     SetTargettedPlayer(Dist:float):?agent=
@@ -126,6 +127,13 @@ Basic_Behavior<public> := class(npc_behavior):
                             else:
                                 Print("Player is not in range")
 
+    RandomMoveLoop()<suspends>:void=
+        if(NpcAgent:= GetAgent[], NPC:=NpcAgent.GetFortCharacter[], Anim:= NPC.GetPlayAnimationController[]):
+            loop:
+                Sleep(0.5)
+                if(IsAlive = false):
+                    break
+                NPC.NavigateToRandomLocation(4.0, 500.0)
     RangedLoop()<suspends>:void=
         if(NpcAgent:= GetAgent[], NPC:=NpcAgent.GetFortCharacter[], Anim:= NPC.GetPlayAnimationController[], Focus:=NPC.GetFocusInterface[]):
             Print("raycast prop found")

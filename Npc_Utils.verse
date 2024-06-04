@@ -12,7 +12,7 @@ using { /Fortnite.com/Devices/CreativeAnimation }
 
 
 NPCTag := class(tag){}
-
+HSTag := class(tag){}
 #wrapper class to fetch players outside of creative_devices
 FetchPlayers := class(creative_device):
     FGetPlayers()<transacts>: []agent=

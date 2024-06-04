@@ -23,10 +23,13 @@ Main := class (creative_device):
     @editable NpcSpawners: []npc_spawner_device = array{}
 
     @editable DistanceTest:creative_prop = creative_prop{}
+    @editable FireInput:input_trigger_device = input_trigger_device{}
+    @editable SoldierPropAsset : creative_prop_asset = DefaultCreativePropAsset
 
     var AliveNpcs : []fort_character = array{}
 
     OnBegin<override>()<suspends>:void=
+        FireInput.PressedEvent.Subscribe(FireRaycast)
         Print("starting")
         # Subscribe to the events of the spawners
         for(Spawner: NpcSpawners):
@@ -79,6 +82,45 @@ Main := class (creative_device):
         loop:
             Sleep(0.1)
             GetActiveNpcPositions()
+
+
+    FireRaycast(Player:agent):void=
+        MaybeRP:= SpawnRaycastProp(AdvancedRaycastAsset ,CalculatePoint(Player, 350.0, "Forward"))
+        if(RP :=MaybeRP?, FC:=Player.GetFortCharacter[]):
+            if(RP.Parent.TeleportTo[RP.Parent.GetTransform().Translation,FC.GetViewRotation().ApplyYaw(DegreesToRadians(-90.0)) ]){}
+            spawn. RaycastCheck(RP)
+    
+    RaycastCheck(RP:RaycastProp)<suspends>:void=
+        var TotalTime:float =0.0
+        loop:
+            Sleep(0.1)
+            set TotalTime+=0.1
+            if(TotalTime>1.0):
+                RP.GracefullDispose()
+                break
+
+            if(RP.OutputProp.GetTransform().Scale.X >= 2.0):
+                if(Player:=GetPlayers()[0], NpcPos :=TempPlayerPersistance[Player].Positions):
+                    Closest := RP.HitLocationProp.GetClosestFCInRange(FilterActive(), ?MaxRange:=150.0)
+                    if(HitNpc := Closest(0)?):
+                        HSProp:= SpawnTarget(HitNpc.GetTransform().Translation, SoldierPropAsset) # - vector3{X:=0.0, Y:=0.0, Z:=55.0}
+                        Print("hit location {RP.HitLocationProp.GetTransform().Translation}")
+                        Print("HSProp {HSProp.GetTransform().Translation}")
+                        MaybeClosest :=GetClosestObjectByTag(HSProp, HSTag{}, ?MaxRange:=150.0)
+                        if(ClosestHS:=MaybeClosest?):
+                            Dist:= ManhattenDistance(RP.HitLocationProp.GetTransform().Translation, ClosestHS.GetTransform().Translation)
+                            Print("dist {Dist}")
+                            if(Dist<100.0):
+                                HitNpc.Damage(30.0)
+                                Print("headshot")
+                            RP.GracefullDispose()
+                            ClosestHS.Dispose()
+                            break
+                            
+                        HSProp.Dispose()
+        
+
+
 
 
     CheckRaycastProp(raycastProp:RaycastProp)<suspends>:void=

@@ -174,6 +174,17 @@ SetText<localizes>(Message:string): message = "{Message}"
         return (Closest, ClosestDistance)
     return (false, ClosestDistance)
 
+(V:vector3).GetClosestFCInRange(Players:[]fort_character, ?MaxRange:float=100.0)<transacts>:tuple(?fort_character, float)=
+    var ClosestDistance : float = 9999999999999.0
+    var Closest:?fort_character = false
+    for(FC:Players):
+        if(ManDistance:= ManhattenDistance(FC.GetTransform().Translation, V), ManDistance< ClosestDistance):
+            set Closest = option{FC}
+            set ClosestDistance = ManDistance
+    if(ClosestDistance<=MaxRange or MaxRange<0.0):
+        return (Closest, ClosestDistance)
+    return (false, ClosestDistance)
+
 
 (CompareProp:creative_prop).GetClosestVectorInRange(Vectors:[]vector3, ?MaxRange:float=100.0)<transacts>:tuple(?vector3, float)=
     var ClosestDistance : float = 9999999999999.0
