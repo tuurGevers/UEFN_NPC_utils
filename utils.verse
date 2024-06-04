@@ -139,7 +139,18 @@ SetText<localizes>(Message:string): message = "{Message}"
     if(ClosestDistance<=MaxRange or MaxRange<0.0):
         return Closest
     return false
-    
+
+(V:vector3).GetFurthestPropInRange(Props:[]creative_prop, ?MaxRange:float=1000.0)<transacts>:?creative_prop=
+    var FurthestDistance : float = 0.0
+    var Furthest:?creative_prop = false
+    for(Prop:Props):
+        if(ManDistance:= ManhattenDistance(Prop.GetTransform().Translation,V), ManDistance> FurthestDistance):
+            set Furthest = option{Prop}
+            set FurthestDistance = ManDistance
+    if(FurthestDistance<=MaxRange or MaxRange<0.0):
+        return Furthest
+    return false
+
 (CompareProp:creative_prop).GetClosestPlayerInRange(Players:[]agent, ?MaxRange:float=100.0)<transacts>:?agent=
     var ClosestDistance : float = 9999999999999.0
     var Closest:?agent = false
@@ -398,7 +409,7 @@ GetRandomVectorWithOffset(CurrentPos:vector3, MaxOffset:float, ?ChangeZ:logic=tr
     return vector3{X:=X, Y:=Y, Z:=Z}
 
 # Calculates a point relative to a player's transform and distance with optional extra yaw and pitch
-CalculatePoint( Player:agent,DistanceAmp:float, Direction:string, ?ExtraYaw:float=0.0,  ?ExtraPitch:float=0.0):vector3=
+CalculatePoint( Player:agent,DistanceAmp:float, Direction:string, ?ExtraYaw:float=0.0,  ?ExtraPitch:float=0.0)<transacts>:vector3=
     if(FC:= Player.GetFortCharacter[]):
         Vec:= FC.GetViewLocation()
         Rot:= FC.GetViewRotation().ApplyYaw(DegreesToRadians(ExtraYaw)).ApplyPitch(DegreesToRadians(ExtraPitch))

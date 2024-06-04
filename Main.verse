@@ -22,6 +22,8 @@ Main := class (creative_device):
 
     @editable NpcSpawners: []npc_spawner_device = array{}
 
+    @editable DistanceTest:creative_prop = creative_prop{}
+
     var AliveNpcs : []fort_character = array{}
 
     OnBegin<override>()<suspends>:void=
@@ -38,6 +40,11 @@ Main := class (creative_device):
             if(set TempPlayerPersistance[Player] = NpcPositions{Positions:=array{}}){}
 
         spawn. NpcUpdateLoop()
+        Sleep(2.0)
+        PossibleProp:=GetClosestObjectByTag(vector3{X:=920.000000,Y:=1044.000000,Z:=248.000000}, RaycastingDistanceProp{}, ?MaxRange:=500.0)
+        if(DistProp:=PossibleProp?):
+            DistProp.MoveTo(DistanceTest.GetTransform().Translation.Up(900.0), DistProp.GetTransform().Rotation, 9.0)
+
         # SpawnAdvancedRaycastProp(AdvancedRaycastAsset, GetRandomVector3(vector3{X:=10.0,Y:=10.0, Z:=120.0}, vector3{X:=800.0,Y:=800.0, Z:=150.0}), TestAdvancedRaycast)
         #for(I:=0..4):
         #     SpawnRaycastProp(ScaleProp,GetRandomVector3(vector3{X:=10.0,Y:=10.0, Z:=120.0}, vector3{X:=800.0,Y:=800.0, Z:=150.0}), CheckRaycastProp)

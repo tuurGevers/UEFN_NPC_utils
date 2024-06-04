@@ -15,6 +15,7 @@ RaycastingScaleProp := class(tag){}
 RaycastingDistanceProp := class(tag){}
 RaycastingHitLocationProp := class(tag){}
 RaycastingParentProp := class(tag){}
+
 ###RAYCASTING###
 
 # A class with the props used in the raycast bp.
@@ -28,13 +29,22 @@ RaycastProp := class:
     ScaleProp:creative_prop
     HitLocationProp:creative_prop
 
-# # AdvancedRaycastProp := class:
-#     Parent:creative_prop
-#     OutputProp:creative_prop
-#     ScaleProp:creative_prop
-#     # DistanceProp:creative_prop
-#     HitLocationProp:creative_prop
+AdvancedRaycastProp := class:
+    Parent:creative_prop
+    OutputProp:creative_prop
+    ScaleProp:creative_prop
+    DistanceProp:creative_prop
+    HitLocationProp:creative_prop
 
+GetSpawnedPropResources(Parent:creative_prop,?MaxRange:float=600.0):?AdvancedRaycastProp=
+    SelectedProp:= GetClosestObjectByTag(Parent, RaycastingProp{},?MaxRange:=MaxRange)
+    SelectedScaleProp:= GetClosestObjectByTag(Parent, RaycastingScaleProp{}, ?MaxRange:=MaxRange)
+    SelectedDistanceProp:= GetClosestObjectByTag(Parent, RaycastingDistanceProp{}, ?MaxRange:=MaxRange)
+    SelectedHitLocationProp:= GetClosestObjectByTag(Parent, RaycastingHitLocationProp{}, ?MaxRange:=MaxRange)
+    if(Prop := SelectedProp?, ScaleProp := SelectedScaleProp?, DistanceProp := SelectedDistanceProp?, HitLocationProp := SelectedHitLocationProp?):
+        return option{AdvancedRaycastProp{Parent:=Parent, OutputProp:=Prop, ScaleProp:=ScaleProp, DistanceProp:=DistanceProp, HitLocationProp:=HitLocationProp}}
+    else:
+        return false
 
 # GetClosestObjectByTag is a function that returns the closest creative_prop object with the specified tag to the parent object.
 # Parameters:
@@ -42,16 +52,16 @@ RaycastProp := class:
 # - Tag: The tag to filter the creative_prop objects.
 # Returns:
 # - The closest creative_prop object with the specified tag, or null if no matching object is found.
-GetClosestObjectByTag(Parent:creative_prop, Tag:tag)<transacts>:?creative_prop=
+GetClosestObjectByTag(Parent:creative_prop, Tag:tag,?MaxRange:float=550.0)<transacts>:?creative_prop=
     var TotalProps: []creative_prop = array{}
     for(Obj: GetCreativeObjectsWithTag(Tag)):
         if(Prop:= creative_prop[Obj]):
             set TotalProps += array{Prop}
 
     Print("TotalProps: {TotalProps.Length}")
-    return Parent.GetClosestPropInRange(TotalProps)
+    return Parent.GetClosestPropInRange(TotalProps,?MaxRange:=MaxRange)
 
-GetClosestObjectByTag(Location:vector3, Tag:tag)<transacts>:?creative_prop=
+GetClosestObjectByTag(Location:vector3, Tag:tag, ?MaxRange:float=250.0)<transacts>:?creative_prop=
     var TotalProps: []creative_prop = array{}
     for(Obj: GetCreativeObjectsWithTag(Tag)):
         if(Prop:= creative_prop[Obj]):
@@ -61,7 +71,19 @@ GetClosestObjectByTag(Location:vector3, Tag:tag)<transacts>:?creative_prop=
     Print("npc location {Location}")
     for(FoundProp:TotalProps):
         Print("FoundProp location {FoundProp.GetTransform().Translation} dist {ManhattenDistance(Location, FoundProp.GetTransform().Translation)}")
-    return Location.GetClosestPropInRange(TotalProps, ?MaxRange:=250.0)
+    return Location.GetClosestPropInRange(TotalProps, ?MaxRange:=MaxRange)
+
+GetFurthestObjectByTag(Location:vector3, Tag:tag)<transacts>:?creative_prop=
+    var TotalProps: []creative_prop = array{}
+    for(Obj: GetCreativeObjectsWithTag(Tag)):
+        if(Prop:= creative_prop[Obj]):
+            set TotalProps += array{Prop}
+
+    Print("TotalProps by loc: {TotalProps.Length}")
+    Print("npc location {Location}")
+    for(FoundProp:TotalProps):
+        Print("FoundProp location {FoundProp.GetTransform().Translation} dist {ManhattenDistance(Location, FoundProp.GetTransform().Translation)}")
+    return Location.GetFurthestPropInRange(TotalProps)
 
 # SpawnRaycastProp is a function that spawns a raycast prop at the specified position with the given asset.
 # It also takes a callback function that will be called when the prop is spawned.
