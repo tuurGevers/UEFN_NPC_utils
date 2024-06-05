@@ -8,6 +8,7 @@ using { /Verse.org/Simulation/Tags }
 using { /Fortnite.com/UI }
 using { /UnrealEngine.com/Temporary/UI }
 using { /Fortnite.com/Devices/CreativeAnimation }
+using { /Fortnite.com/Game }
 
 # Utility Functions #
 SimpleRNG:=class:
@@ -119,16 +120,26 @@ SetText<localizes>(Message:string): message = "{Message}"
         return Closest
     return false
 
+(CompareProp:creative_prop).GetClosestObjInRange(Props: []T where T: subtype(positional))<transacts>:?T=
+    var ClosestDistance : float = 9999999999999.0
+    var Closest:?T = false
+    for(Prop:Props):
+        if(ManDistance:= ManhattenDistance(Prop.GetTransform().Translation, CompareProp.GetTransform().Translation), ManDistance< ClosestDistance):
+            set Closest = option{Prop}
+            set ClosestDistance = ManDistance
+    return Closest
+    
 (CompareProp:creative_prop).GetClosestPropInRange(Props:[]creative_prop, ?MaxRange:float=100.0)<transacts>:?creative_prop=
     var ClosestDistance : float = 9999999999999.0
     var Closest:?creative_prop = false
     for(Prop:Props):
-        if(ManDistance:= ManhattenDistance(Prop.GetTransform().Translation, CompareProp.GetTransform().Translation), ManDistance< ClosestDistance):
+        if(ManDistance:= ManhattenDistance(Prop.GetTransform().Translation,CompareProp.GetTransform().Translation), ManDistance< ClosestDistance):
             set Closest = option{Prop}
             set ClosestDistance = ManDistance
     if(ClosestDistance<=MaxRange or MaxRange<0.0):
         return Closest
     return false
+
 (V:vector3).GetClosestPropInRange(Props:[]creative_prop, ?MaxRange:float=100.0)<transacts>:?creative_prop=
     var ClosestDistance : float = 9999999999999.0
     var Closest:?creative_prop = false

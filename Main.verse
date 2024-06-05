@@ -9,6 +9,7 @@ using { /Fortnite.com/UI }
 using { /UnrealEngine.com/Temporary/UI }
 using { /Verse.org/Assets }
 
+Explosive:= class(tag){}
 #makeshift way to keep track of all alive npc's outside of creative_device
 var TempPlayerPersistance: weak_map(player, NpcPositions) = map{}
 
@@ -25,6 +26,9 @@ Main := class (creative_device):
     @editable DistanceTest:creative_prop = creative_prop{}
     @editable FireInput:input_trigger_device = input_trigger_device{}
     @editable SoldierPropAsset : creative_prop_asset = DefaultCreativePropAsset
+
+    @editable ExplosivePropAsset : creative_prop_asset = DefaultCreativePropAsset
+    @editable ExplosiveDevice: explosive_device = explosive_device{}
 
     var AliveNpcs : []fort_character = array{}
 
@@ -88,9 +92,9 @@ Main := class (creative_device):
         MaybeRP:= SpawnRaycastProp(AdvancedRaycastAsset ,CalculatePoint(Player, 350.0, "Forward"))
         if(RP :=MaybeRP?, FC:=Player.GetFortCharacter[]):
             if(RP.Parent.TeleportTo[RP.Parent.GetTransform().Translation,FC.GetViewRotation().ApplyYaw(DegreesToRadians(-90.0)) ]){}
-            spawn. RaycastCheck(RP)
+            spawn. RaycastCheck(RP, Player)
     
-    RaycastCheck(RP:RaycastProp)<suspends>:void=
+    RaycastCheck(RP:RaycastProp, Player:agent)<suspends>:void=
         var TotalTime:float =0.0
         loop:
             Sleep(0.1)
@@ -100,7 +104,7 @@ Main := class (creative_device):
                 break
 
             if(RP.OutputProp.GetTransform().Scale.X >= 2.0):
-                if(Player:=GetPlayers()[0], NpcPos :=TempPlayerPersistance[Player].Positions):
+                if(NpcPos :=TempPlayerPersistance[Player].Positions):
                     Closest := RP.HitLocationProp.GetClosestFCInRange(FilterActive(), ?MaxRange:=150.0)
                     if(HitNpc := Closest(0)?):
                         HSProp:= SpawnTarget(HitNpc.GetTransform().Translation, SoldierPropAsset) # - vector3{X:=0.0, Y:=0.0, Z:=55.0}
@@ -110,14 +114,18 @@ Main := class (creative_device):
                         if(ClosestHS:=MaybeClosest?):
                             Dist:= ManhattenDistance(RP.HitLocationProp.GetTransform().Translation, ClosestHS.GetTransform().Translation)
                             Print("dist {Dist}")
-                            if(Dist<100.0):
-                                HitNpc.Damage(30.0)
-                                Print("headshot")
+                            if(Dist<60.0):
+                                if(ExplosiveDevice.TeleportTo[HitNpc.GetTransform().Translation, ClosestHS.GetTransform().Rotation] ):
+                                    ExplosiveDevice.Reset()
+                                    ExplosiveDevice.Explode(Player)
+                                
+                                Print("boom")
                             RP.GracefullDispose()
                             ClosestHS.Dispose()
+                            SpawnTarget(HitNpc.GetTransform().Translation, SoldierPropAsset)
                             break
                             
-                        HSProp.Dispose()
+                        # HSProp.Dispose()
         
 
 

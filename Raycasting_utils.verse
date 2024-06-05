@@ -30,6 +30,8 @@ RaycastProp := class:
     HitLocationProp:creative_prop
 
 (RP: RaycastProp).GracefullDispose():void=
+    if(PropAnimController:= RP.Parent.GetAnimationController[]):
+        PropAnimController.Stop()
     RP.OutputProp.Dispose()
     RP.ScaleProp.Dispose()
     RP.HitLocationProp.Dispose()

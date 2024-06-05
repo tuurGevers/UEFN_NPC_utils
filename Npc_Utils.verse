@@ -93,15 +93,15 @@ CountDown(MaxTime:float , nav:navigatable)<suspends>: logic=
     Sleep(MaxTime)
     return false
     
-GetAnimationByName(Name:string)<transacts>:animation_sequence=
+GetAnimationByName(Name:string)<transacts>:?animation_sequence=
         return case(Name):
-            "slime_attack" =>  npc.Enemy_Anim_MonsterArmature_Bite_Front
-            "slime_hit" => npc.Enemy_Anim_MonsterArmature_HitRecieve
-            "crab_attack" => crab_npc.Crab_Anim_MonsterArmature_Bite_Front
-            "crab_hit" => crab_npc.Crab_Anim_MonsterArmature_HitRecieve
-            "soldier_hit" =>soldier.Character_Soldier_Anim_CharacterArmature_HitReact
-            "soldier_attack" =>soldier.Character_Soldier_Anim_CharacterArmature_Idle_Shoot
-            _=> npc.Enemy_Anim_MonsterArmature_Bite_Front
+            "slime_attack" =>  option{npc.Enemy_Anim_MonsterArmature_Bite_Front}
+            "slime_hit" => option{npc.Enemy_Anim_MonsterArmature_HitRecieve}
+            "crab_attack" => option{crab_npc.Crab_Anim_MonsterArmature_Bite_Front}
+            "crab_hit" => option{crab_npc.Crab_Anim_MonsterArmature_HitRecieve}
+            "soldier_hit" =>option{soldier.Character_Soldier_Anim_CharacterArmature_HitReact}
+            "soldier_attack" =>option{soldier.Character_Soldier_Anim_CharacterArmature_Idle_Shoot}
+            _=> false
 
 #gets all players in game
 GetPlayers()<transacts>: []agent=

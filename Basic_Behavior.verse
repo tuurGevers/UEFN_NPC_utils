@@ -10,7 +10,7 @@ using { /Verse.org/Random }
 using { /Verse.org/Simulation/Tags }
 
 
-BasicBehaviors:= enum{BASIC_MELEE, MELEE_CHASE ,BASIC_RANGED, INTERACT_DEMO, RANDOM_MOVE}
+BasicBehaviors:= enum{BASIC_MELEE, MELEE_CHASE ,BASIC_RANGED, INTERACT_DEMO, RANDOM_MOVE, STATIC}
 
 
 # A Verse-authored NPC Behavior that can be used within an NPC Character Definition or an NPC Spawner device's NPC Behavior Script Override.
@@ -44,6 +44,7 @@ Basic_Behavior<public> := class(npc_behavior):
                 BasicBehaviors.BASIC_RANGED=>RangedLoop()
                 BasicBehaviors.INTERACT_DEMO=>InteractDemoLoop()
                 BasicBehaviors.RANDOM_MOVE=>RandomMoveLoop()
+                BasicBehaviors.STATIC=>StaticLoop()
             
 
     SetTargettedPlayer(Dist:float):?agent=
@@ -79,9 +80,10 @@ Basic_Behavior<public> := class(npc_behavior):
                             if(Res = true):
                                 if(IsHitInLoop = false):
                                     set IsAttacking = true
-                                    AttackAnim:=Anim.Play(GetAnimationByName(AttackAnimation))
-                                    set CurrentAnim = option{AttackAnim}
-                                    AttackAnim.Await()
+                                    if(AnimToPlay:=GetAnimationByName(AttackAnimation)?):
+                                        AttackAnim:=Anim.Play(AnimToPlay)
+                                        set CurrentAnim = option{AttackAnim}
+                                        AttackAnim.Await()
                                     if(IsHitInLoop = false):
                                         if(FC:= FoundPlayer.GetFortCharacter[]):
                                             Print("player found")
@@ -117,9 +119,10 @@ Basic_Behavior<public> := class(npc_behavior):
                             if(Res = true):
                                 if(IsHitInLoop = false):
                                     set IsAttacking = true
-                                    AttackAnim:=Anim.Play(GetAnimationByName(AttackAnimation))
-                                    set CurrentAnim = option{AttackAnim}
-                                    AttackAnim.Await()
+                                    if(AnimToPlay:=GetAnimationByName(AttackAnimation)?):
+                                        AttackAnim:=Anim.Play(AnimToPlay)
+                                        set CurrentAnim = option{AttackAnim}
+                                        AttackAnim.Await()
                                     if(IsHitInLoop = false):
                                         if(FC:= FoundPlayer.GetFortCharacter[]):
                                             Print("player found")
@@ -134,6 +137,14 @@ Basic_Behavior<public> := class(npc_behavior):
                 if(IsAlive = false):
                     break
                 NPC.NavigateToRandomLocation(4.0, 500.0)
+
+    StaticLoop()<suspends>:void=
+        if(NpcAgent:= GetAgent[], NPC:=NpcAgent.GetFortCharacter[], Anim:= NPC.GetPlayAnimationController[]):
+            loop:
+                Sleep(0.5)
+                if(IsAlive = false):
+                    break
+
     RangedLoop()<suspends>:void=
         if(NpcAgent:= GetAgent[], NPC:=NpcAgent.GetFortCharacter[], Anim:= NPC.GetPlayAnimationController[], Focus:=NPC.GetFocusInterface[]):
             Print("raycast prop found")
@@ -167,13 +178,14 @@ Basic_Behavior<public> := class(npc_behavior):
                                 Print("player visible")
                                 set IsAttacking = true
                                 Print("starting attack")
-                                for(I:=0..5):
-                                    NPC.NavigateToPlayer(FoundPlayer, 0.05)
-                                    AttackAnim:=Anim.Play(GetAnimationByName(AttackAnimation))
-                                    set CurrentAnim = option{AttackAnim}
-                                    AttackAnim.Await()
-                                    if(IsHitInLoop = false):
-                                        spawn. NPC.ProjectileNoGravity(RaycastPropAsset, HandleRangedHit)
+                                if(AnimToPlay:=GetAnimationByName(AttackAnimation)?):
+                                    for(I:=0..5):
+                                        NPC.NavigateToPlayer(FoundPlayer, 0.05)
+                                        AttackAnim:=Anim.Play(AnimToPlay)
+                                        set CurrentAnim = option{AttackAnim}
+                                        AttackAnim.Await()
+                                        if(IsHitInLoop = false):
+                                            spawn. NPC.ProjectileNoGravity(RaycastPropAsset, HandleRangedHit)
                                         
 
     
@@ -262,8 +274,8 @@ Basic_Behavior<public> := class(npc_behavior):
     
     SuspendHitAnimation(dmg:float)<suspends>:void=
         if(NpcAgent:= GetAgent[], NPC:=NpcAgent.GetFortCharacter[], Anim:= NPC.GetPlayAnimationController[]):
-            if(NPC.IsActive[]):
-                Anim.PlayAndAwait(GetAnimationByName(HitAnimation))
+            if(NPC.IsActive[], AnimToPlay:=GetAnimationByName(HitAnimation)?):
+                Anim.PlayAndAwait(AnimToPlay)
 
         Print("NPC Hit")
 
