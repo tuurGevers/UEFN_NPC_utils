@@ -9,36 +9,6 @@ using { /UnrealEngine.com/Temporary/SpatialMath }
 using { /Verse.org/Random }
 using { /Verse.org/Simulation/Tags }
 
-Guard_State_Machine := class:
-    var Behavior : ?Guard_StateFull_Behavior = false  # The behavior of the NPC.
-    var CurrentState : ?Guard_State = false  # The current state of the state machine.
-    var IsAlive: logic = true
-    var IsHitInLoop: logic = false  # Indicates whether the NPC is currently being hit in a loop.
-    var IsAttacking: logic = false  # Indicates whether the NPC is currently attacking.
-    var LastTransform: transform = transform{}  # The last known transform of the NPC.
-    var CurrentAnim: ?play_animation_instance = false  # The current animation being played by the NPC.
-    var LastPlayer: ?agent = false  # The last known player agent.
-    var PlayerVisible: logic = false  # Indicates whether the player is visible to the NPC.
-
-    ChangeState(NewState:Guard_State):void=
-        if(ActualCurrentState:=CurrentState?):
-            ActualCurrentState.Exit()
-            set CurrentState = option{NewState}
-            NewState.Enter()
-        else:
-            set CurrentState = option{NewState}
-            NewState.Enter()
-
-    # Updates the state machine.
-    Update()<suspends>:void=
-        set IsHitInLoop = false
-        set IsAttacking = false
-        set PlayerVisible = false
-        if(IsAlive = false):
-            return
-        if(ActualCurrentState:=CurrentState?):
-            ActualCurrentState.Update()
-
 Guard_State := class:
     Name:string = ""
     var stateMachine : ?Guard_State_Machine =false
@@ -61,10 +31,6 @@ Guard_State := class:
 
 
     # ToggleActive method is used to toggle the state's active status.
-    # It takes a callback function as a parameter, which should return a boolean value.
-    # If the callback returns true, it checks if the current state of the state machine is different from the current state.
-    # If it is different, it changes the state to the current state.
-    # If the callback returns false, it does nothing.
     ToggleActive(callback()<transacts>:logic):void=
         if(ActualStateMachine:=stateMachine?):
             if (callback() = true ):
@@ -96,8 +62,6 @@ GuardIdle := class(Guard_State):
                         if(Nav:=NPC.GetNavigatable[]):
                             Nav.StopNavigation()
                     
-
-
     CheckConditionsLoop()<suspends>:int=
         loop:
             Sleep(0.1)
@@ -114,7 +78,7 @@ GuardIdle := class(Guard_State):
         if(ActualStateMachine:=stateMachine?):
             if(ABehavior := ActualStateMachine.Behavior?):
                 if(NPC := ABehavior.GetAgent[].GetFortCharacter[]):
-                    if (ABehavior.ArePlayersInRange() = true):
+                    if (ABehavior.ArePlayersInRange(800.0) = true):
                         ActualStateMachine.ChangeState(ABehavior.alertedState)
                         return true
                     else if (NPC.GetHealth()<=40.0):
@@ -134,45 +98,53 @@ GuardAlerted := class(Guard_State):
             if(NPC.GetDistance(Player)<500.0):
                 return true
     Update<override>()<suspends>:void=
+        Print("Updating Alerted State")  
+        if(ActualStateMachine:=stateMachine?):
+            if(ABehavior := ActualStateMachine.Behavior?):
+                if(NpcAgent:= ABehavior.GetAgent[], NPC:=NpcAgent.GetFortCharacter[], Anim:= NPC.GetPlayAnimationController[], Focus:=NPC.GetFocusInterface[]):
+                    if(ActualStateMachine.IsHitInLoop = false):
+                        PlayerInRange:= SetTargettedPlayer(2500.0)
 
-            Print("Updating Alerted State")  
-            if(ActualStateMachine:=stateMachine?):
-                if(ABehavior := ActualStateMachine.Behavior?):
-                    if(NpcAgent:= ABehavior.GetAgent[], NPC:=NpcAgent.GetFortCharacter[], Anim:= NPC.GetPlayAnimationController[], Focus:=NPC.GetFocusInterface[]):
-                        if(ActualStateMachine.IsHitInLoop = false):
-                            Print("not hit")
-                            PlayerInRange:= SetTargettedPlayer(2500.0)
-                            Print("player searched")
-                            if(FoundPlayer:= PlayerInRange?):
-                                spawn. Focus.MaintainFocus(FoundPlayer)
+                        if(FoundPlayer:= PlayerInRange?):
+                            spawn. Focus.MaintainFocus(FoundPlayer)
+                            KeepDistance(NPC, FoundPlayer)
 
-                                if(NPC.GetDistance(FoundPlayer) < 800.0):
-                                    V:= CalculatePoint(FoundPlayer, 1500.0, "Forward")
-                                    NPC.NavigateToLocation(V, 1.0)
-                                else:
-                                    Res:= race:
-                                        NPC.NavigateToPlayer(FoundPlayer, 1.0)
-                                        NPCInRangeLoop(NPC, FoundPlayer)
-                                    if(Res = true):
-                                        if(Nav:=NPC.GetNavigatable[]):
-                                            Nav.StopNavigation()
-
-                                if(ActualStateMachine.IsHitInLoop = false ):
-                                    SpawnRaycastProp(ABehavior.VisionAsset ,CalculatePoint(NpcAgent, 350.0, "Forward")+ vector3{X:=0.0, Y:=0.0, Z:=30.0}, CheckRaycastProp, ?IsAsync:=false)
-                                    
-                                    if(ActualStateMachine.PlayerVisible = true):
-                                        Print("player visible")
-                                        set ActualStateMachine.IsAttacking = true
-                                        Print("starting attack")
-                                        if(AnimToPlay:=GetAnimationByName(ABehavior.AttackAnimation)?):
-                                            for(I:=0..5):
-                                                NPC.NavigateToPlayer(FoundPlayer, 0.05)
-                                                AttackAnim:=Anim.Play(AnimToPlay)
-                                                set ActualStateMachine.CurrentAnim = option{AttackAnim}
-                                                AttackAnim.Await()
-                                                if(ActualStateMachine.IsHitInLoop = false):
-                                                    spawn. NPC.ProjectileNoGravity(ABehavior.RaycastPropAsset, HandleRangedHit)
+                            if(ActualStateMachine.IsHitInLoop = false ):
+                                SpawnRaycastProp(ABehavior.VisionAsset ,CalculatePoint(NpcAgent, 350.0, "Forward")+ vector3{X:=0.0, Y:=0.0, Z:=30.0}, CheckRaycastProp, ?IsAsync:=false)
+                                
+                                if(ActualStateMachine.PlayerVisible = true):
+                                    set ActualStateMachine.IsAttacking = true
+                                    if(AnimToPlay:=GetAnimationByName(ABehavior.AttackAnimation)?):
+                                        for(I:=0..5):
+                                            Attack(NPC, FoundPlayer, AnimToPlay)
+                                           
         CheckConditions()
+
+    Attack(NPC:fort_character, FoundPlayer:agent, AnimToPlay:animation_sequence)<suspends>:void=
+        if(ActualStateMachine:=stateMachine?):
+            if(ABehavior := ActualStateMachine.Behavior?):
+                if(Anim:= NPC.GetPlayAnimationController[], Focus:=NPC.GetFocusInterface[]):
+                    for(I:=0..5):
+                        NPC.NavigateToPlayer(FoundPlayer, 0.05)
+                        AttackAnim:=Anim.Play(AnimToPlay)
+                        set ActualStateMachine.CurrentAnim = option{AttackAnim}
+                        AttackAnim.Await()
+                        if(ActualStateMachine.IsHitInLoop = false):
+                            spawn. NPC.ProjectileNoGravity(ABehavior.RaycastPropAsset, HandleRangedHit)
+
+
+    KeepDistance(NPC:fort_character, FoundPlayer:agent)<suspends>:void=
+        if(NPC.GetDistance(FoundPlayer) < 800.0):
+            V:= CalculatePoint(FoundPlayer, 1500.0, "Forward")
+            NPC.NavigateToLocation(V, 1.0)
+        else:
+            Res:= race:
+                NPC.NavigateToPlayer(FoundPlayer, 1.0)
+                NPCInRangeLoop(NPC, FoundPlayer)
+            if(Res = true):
+                if(Nav:=NPC.GetNavigatable[]):
+                    Nav.StopNavigation()
+
 
     Exit<override>():void=
         Print("Exiting Alerted State")
@@ -184,7 +156,7 @@ GuardAlerted := class(Guard_State):
                     if (NPC.GetHealth()<=40.0):
                         ActualStateMachine.ChangeState(ABehavior.fleeingState)
                         return true
-                    else if (ABehavior.AreNoPlayersInRange() = true):
+                    else if (ABehavior.AreNoPlayersInRange(800.0) = true):
                         ActualStateMachine.ChangeState(ABehavior.idleState)
                         return true
         return false

@@ -24,41 +24,25 @@ Guard_StateFull_Behavior<public> := class(npc_behavior):
     var healingState : GuardHealing = GuardHealing{}
     var LastTransform: transform = transform{}  # The last known transform of the NPC.
 
-    AreNoPlayersInRange()<transacts>:logic=
-        if(NPC:=GetAgent[].GetFortCharacter[]):
-            if(NPC.GetPlayersInRange(GetPlayers(), 800.0).Length=0):
-                Print("no players")
-                return true
-        return false
-
-    ArePlayersInRange()<transacts>:logic=
-        if(NPC:=GetAgent[].GetFortCharacter[]):
-            if(NPC.GetPlayersInRange(GetPlayers(), 800.0).Length>0):
-                return true
-        return false
+ 
 
     OnBegin<override>()<suspends>:void=
         if(NpcAgent:= GetAgent[], NPC:=NpcAgent.GetFortCharacter[], Anim:= NPC.GetPlayAnimationController[]):
             NPC.EliminatedEvent().Subscribe(HandleDeath)
             NPC.DamagedEvent().Subscribe(HandleHit)
         Init()
-        Print("started")
         loop:
             if(stateMachine.IsAlive = false):
                 break
-            Update()
+
+            stateMachine.Update()
             Sleep(0.1)
 
     OnEnd<override>():void=
         set stateMachine.IsAlive = false
         Print("Goodbye, NPC!")
 
-
-    
     #Initializes the behavior of the weapon NPC.
-    #Sets the state machine behavior to "Self".
-    #Sets the attack animation to be used by the attack state.
-    #Sets the state machine for the idle, attack, and flee states.
     Init(): void =
         set stateMachine.Behavior = option{Self}
 
@@ -76,16 +60,20 @@ Guard_StateFull_Behavior<public> := class(npc_behavior):
         
         stateMachine.ChangeState(idleState)  # Set initial state
 
+    TransitionToIdle():void=
+        stateMachine.ChangeState(idleState)
 
+    TransitionToAlerted():void=
+        stateMachine.ChangeState(alertedState)
 
-    # This function is responsible for updating the behavior of the NPC.
-    # It calls the `Update` function of the `stateMachine` object and toggles the primary states based on certain conditions.
-    # - `idleState` is toggled active if there are no players in range.
-    # - `attackState` is toggled active if there is a single player in range.
-    # - `fleeState` is toggled active if the NPC is fleeing.
-    # After toggling the states, it checks the current state of the `stateMachine` and prints a message indicating the updated state.
-    Update()<suspends>:void=
-        stateMachine.Update()
+    TransitionToFleeing():void=
+        stateMachine.ChangeState(fleeingState)
+
+    TransitionToHealing():void=
+        stateMachine.ChangeState(healingState)
+
+  
+   
 
     HandleDeath(res:elimination_result):void=
         Prop:=SpawnTarget(vector3{X:=LastTransform.Translation.X, Y:=LastTransform.Translation.Y, Z:=LastTransform.Translation.Z-90.0}, DeathProp, ?Rotation:=LastTransform.Rotation.ApplyYaw(DegreesToRadians(-90.0)))

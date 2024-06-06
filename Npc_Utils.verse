@@ -148,7 +148,18 @@ GetFortCharacters()<transacts>:[]fort_character=
         return FCs
 
 
+(Behavior:npc_behavior).AreNoPlayersInRange(Range:float)<transacts>:logic=
+        if(NPC:=Behavior.GetAgent[].GetFortCharacter[]):
+            if(NPC.GetPlayersInRange(GetPlayers(), Range).Length=0):
+                Print("no players")
+                return true
+        return false
 
+(Behavior:npc_behavior).ArePlayersInRange(Range:float)<transacts>:logic=
+        if(NPC:=Behavior.GetAgent[].GetFortCharacter[]):
+            if(NPC.GetPlayersInRange(GetPlayers(), Range).Length>0):
+                return true
+        return false
 
 # ProjectileAttack is a function that spawns a raycast prop and shoots it away with a makeshift gravity effect.
 # It takes in a RaycastProp as input and returns void.
