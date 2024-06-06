@@ -345,6 +345,11 @@ GenerateUUID()<transacts>:string=
 
     return UUID
 
+UUIDClass:= class:
+    var UUID:string = ""
+
+
+
 (S:string).GetIntValue()<transacts>:int=
     var TotalValue:int = 0
     for(C:S):

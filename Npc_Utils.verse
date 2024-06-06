@@ -28,6 +28,19 @@ FetchPlayers := class(creative_device):
                 if(ManhattenDistance(NpcLocation, PlayerLocation) < MaxRange):
                     return option{Player}
     return false
+
+#get all players in range
+(NPC:fort_character).GetPlayersInRange(Players:[]agent, MaxRange:float)<transacts>: []agent=
+    var PlayersInRange : []agent = array{}
+    if(NPC.IsActive[]):
+        NpcLocation := NPC.GetTransform().Translation
+        for(Player:Players):
+            if(FC:=Player.GetFortCharacter[]):
+                PlayerLocation := FC.GetTransform().Translation
+                if(ManhattenDistance(NpcLocation, PlayerLocation) < MaxRange):
+                    set PlayersInRange += array{Player}
+    # Print("Players in range: {PlayersInRange.Length}")
+    return PlayersInRange
     
 # NavigateToPlayer is a function that makes the NPC navigate to the player within a max amount of time.
 (NPC:fort_character).NavigateToPlayer(Player:agent, MaxTime:float)<suspends>: logic=
@@ -46,6 +59,23 @@ FetchPlayers := class(creative_device):
                     Navigatable.StopNavigation()
 
     return IsInTime
+
+(NPC:fort_character).NavigateAwayFromPlayer(distance:float, MaxTime:float)<suspends>: logic=
+    var IsInTime : logic = true
+    if(NPCAgent := NPC.GetAgent[]):
+        if(Navigatable := NPC.GetNavigatable[]):
+            GoTo := MakeNavigationTarget(CalculatePoint(NPCAgent, distance, "Back"))
+            if(NPC.IsActive[]):
+                Res := race:
+                    Navigatable.NavigateTo(GoTo)
+                    CountDown(MaxTime, Navigatable)
+                if(Res = false):
+                    Print("nav failed")
+                    set IsInTime = false
+                if(NPC.IsActive[]):
+                    Navigatable.StopNavigation()
+    return IsInTime
+
 
 # NavigateToLocation is a function that makes the NPC navigate to a location within a max amount of time.
 (NPC:fort_character).NavigateToLocation(Location:vector3, MaxTime:float)<suspends>: logic=
