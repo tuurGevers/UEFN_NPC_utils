@@ -25,6 +25,7 @@ FetchPlayers := class(creative_device):
         for(Player:Players):
             if(FC:=Player.GetFortCharacter[]):
                 PlayerLocation := FC.GetTransform().Translation
+                Print("Distance: {ManhattenDistance(NpcLocation, PlayerLocation)}")
                 if(ManhattenDistance(NpcLocation, PlayerLocation) < MaxRange):
                     return option{Player}
     return false
@@ -184,6 +185,7 @@ ProjectileAttack(raycastProp:RaycastProp)<suspends>:void=
         race:
             MoveProjectile(Prop, Speed)
             HitDetection(Prop, OnHit)
+        Prop.GracefullDispose()
            
 MoveProjectile(Prop:RaycastProp, Speed:float)<suspends>:void=
     loop:

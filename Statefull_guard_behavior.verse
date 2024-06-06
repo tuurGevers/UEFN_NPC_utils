@@ -10,18 +10,32 @@ using { /Verse.org/Random }
 using { /Verse.org/Simulation/Tags }
 
 # Represents a basic stateful behavior for an NPC.
-Basic_StateFull_Behavior<public> := class(npc_behavior):
+Guard_StateFull_Behavior<public> := class(npc_behavior):
     @editable AttackAnimation:string = ""
     @editable HitAnimation:string = ""
     @editable DeathProp: creative_prop_asset = DefaultCreativePropAsset
+    @editable RaycastPropAsset : creative_prop_asset = DefaultCreativePropAsset
+    @editable VisionAsset : creative_prop_asset = DefaultCreativePropAsset
 
-    var stateMachine: BasicStateMachine = BasicStateMachine{}
-    
-    var idleState: IdleState = IdleState{}
-    var attackState: AttackState = AttackState{}
-    var fleeState: FleeState = FleeState{}
-    var dancingState:DancingState = DancingState{}
-    var LastTransform:transform= transform{}
+    var stateMachine: Guard_State_Machine = Guard_State_Machine{}
+    var idleState: GuardIdle = GuardIdle{}
+    var alertedState : GuardAlerted = GuardAlerted{}
+    var fleeingState : GuardFleeing = GuardFleeing{}
+    var healingState : GuardHealing = GuardHealing{}
+    var LastTransform: transform = transform{}  # The last known transform of the NPC.
+
+    AreNoPlayersInRange()<transacts>:logic=
+        if(NPC:=GetAgent[].GetFortCharacter[]):
+            if(NPC.GetPlayersInRange(GetPlayers(), 800.0).Length=0):
+                Print("no players")
+                return true
+        return false
+
+    ArePlayersInRange()<transacts>:logic=
+        if(NPC:=GetAgent[].GetFortCharacter[]):
+            if(NPC.GetPlayersInRange(GetPlayers(), 800.0).Length>0):
+                return true
+        return false
 
     OnBegin<override>()<suspends>:void=
         if(NpcAgent:= GetAgent[], NPC:=NpcAgent.GetFortCharacter[], Anim:= NPC.GetPlayAnimationController[]):
@@ -47,12 +61,18 @@ Basic_StateFull_Behavior<public> := class(npc_behavior):
     #Sets the state machine for the idle, attack, and flee states.
     Init(): void =
         set stateMachine.Behavior = option{Self}
-        set attackState.AttackAnimation = AttackAnimation
 
         set idleState.stateMachine = option{stateMachine}
-        set attackState.stateMachine = option{stateMachine}
-        set fleeState.stateMachine = option{stateMachine}
-        set dancingState.stateMachine = option{stateMachine}
+        set alertedState.stateMachine = option{stateMachine}
+        set fleeingState.stateMachine = option{stateMachine}
+        set healingState.stateMachine = option{stateMachine}
+
+        var Waypoints: []vector3 = array{}
+        for(I:=0..5):
+            set Waypoints += array{vector3{X:=GetRandomFloat(-500.0,500.0), Y:=GetRandomFloat(-500.0,500.0), Z:=0.0}}
+        set fleeingState.SavePoint =vector3{X:=1500.0, Y:=100.0,Z:=0.0}
+        set idleState.Waypoints = Waypoints
+
         
         stateMachine.ChangeState(idleState)  # Set initial state
 
@@ -66,44 +86,6 @@ Basic_StateFull_Behavior<public> := class(npc_behavior):
     # After toggling the states, it checks the current state of the `stateMachine` and prints a message indicating the updated state.
     Update()<suspends>:void=
         stateMachine.Update()
-           
-
-    IsFleeing()<transacts>:logic=
-        if((IsHealthLow() = true and AreMultiplePlayersInRange() = true) or stateMachine.IsHitInLoop = true):
-            Print("fleeing")
-            return true
-        return false
-
-    IsHealthLow()<transacts>:logic=
-        if(NPC:=GetAgent[].GetFortCharacter[]):
-            if(NPC.GetHealth()+NPC.GetShield()  < 30.0):
-                return true
-        return false
-
-    AreMultiplePlayersInRange()<transacts>:logic=
-        if(NPC:=GetAgent[].GetFortCharacter[]):
-            if(NPC.GetPlayersInRange(GetPlayers(), 800.0).Length>1):
-                return true
-        return false
-
-    IsSinglePlayerInRange()<transacts>:logic=
-        if(NPC:=GetAgent[].GetFortCharacter[]):
-            if(NPC.GetPlayersInRange(GetPlayers(), 800.0).Length=1):
-                return true
-        return false
-
-    ArePlayersInRange()<transacts>:logic=
-        if(NPC:=GetAgent[].GetFortCharacter[]):
-            if(NPC.GetPlayersInRange(GetPlayers(), 800.0).Length>0):
-                return true
-        return false
-    
-    AreNoPlayersInRange()<transacts>:logic=
-        if(NPC:=GetAgent[].GetFortCharacter[]):
-            if(NPC.GetPlayersInRange(GetPlayers(), 800.0).Length=0):
-                Print("no players")
-                return true
-        return false
 
     HandleDeath(res:elimination_result):void=
         Prop:=SpawnTarget(vector3{X:=LastTransform.Translation.X, Y:=LastTransform.Translation.Y, Z:=LastTransform.Translation.Z-90.0}, DeathProp, ?Rotation:=LastTransform.Rotation.ApplyYaw(DegreesToRadians(-90.0)))
@@ -136,3 +118,4 @@ Basic_StateFull_Behavior<public> := class(npc_behavior):
         Sleep(1.5)
         prop.Dispose()
 
+    
